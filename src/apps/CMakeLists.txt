@@ -1,2 +1,2 @@
-include_directories(${libtri_SOURCE_DIR}/include)
-add_executable(3d_video_player src/3d_video_player.cpp)
+add_app_default(3d_video_player)
+target_link_libraries(3d_video_player tri)

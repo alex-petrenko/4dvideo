@@ -1,11 +1,2 @@
-include_directories(${libtri_SOURCE_DIR}/include)
-
-set(SOURCES
-    src/tri_tests.cpp
-)
-
-set(HEADERS
-)
-
-add_executable(test_app ${SOURCES} ${HEADERS})
+add_test_default(test_app)
 target_link_libraries(test_app gtest gtest_main tri)
