@@ -22,10 +22,12 @@ set(GTEST_MAIN_LIB ${CMAKE_STATIC_LIBRARY_PREFIX}gtest_main${CMAKE_STATIC_LIBRAR
 if (MSVC)
     set(GTEST_IMPORTED_LOCATION
         IMPORTED_LOCATION_DEBUG "${GTEST_BINARY}/googlemock/gtest/Debug/${GTEST_LIB}"
-        IMPORTED_LOCATION_RELEASE "${GTEST_BINARY}/googlemock/gtest/Release/${GTEST_LIB}")
+        IMPORTED_LOCATION_RELEASE "${GTEST_BINARY}/googlemock/gtest/Release/${GTEST_LIB}"
+        IMPORTED_LOCATION_RELWITHDEBINFO "${GTEST_BINARY}/googlemock/gtest/RelWithDebInfo/${GTEST_LIB}")
     set(GTESTMAIN_IMPORTED_LOCATION
         IMPORTED_LOCATION_DEBUG "${GTEST_BINARY}/googlemock/gtest/Debug/${GTEST_MAIN_LIB}"
-        IMPORTED_LOCATION_RELEASE "${GTEST_BINARY}/googlemock/gtest/Release/${GTEST_MAIN_LIB}")
+        IMPORTED_LOCATION_RELEASE "${GTEST_BINARY}/googlemock/gtest/Release/${GTEST_MAIN_LIB}"
+        IMPORTED_LOCATION_RELWITHDEBINFO "${GTEST_BINARY}/googlemock/gtest/RelWithDebInfo/${GTEST_MAIN_LIB}")
 else()
     set(GTEST_IMPORTED_LOCATION "${GTEST_BINARY}/googlemock/gtest/${GTEST_LIB}")  # not tested on Linux!
     set(GTESTMAIN_IMPORTED_LOCATION "${GTEST_BINARY}/googlemock/gtest/${GTEST_MAIN_LIB}")

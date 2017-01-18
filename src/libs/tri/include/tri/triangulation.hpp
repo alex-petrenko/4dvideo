@@ -1,61 +1,16 @@
 #pragma once
 
+#include <memory>
 #include <vector>
-#include <fstream>
 #include <cstdint>
 
 #include <opencv2/core.hpp>
 
 #include <util/macro.hpp>
+#include <util/geometry.hpp>
 
 
 /// Types.
-
-// represents pixel on the image
-#pragma pack(push, 1)
-struct PointIJ
-{
-    PointIJ()
-        : i(0)
-        , j(0)
-    {
-    }
-
-    PointIJ(short i, short j)
-        : i(i)
-        , j(j)
-    {
-    }
-
-    // Note! Sorts by x-coordinate first (j first)
-    FORCE_INLINE bool operator<(const PointIJ &p) const
-    {
-        if (j != p.j)
-            return j < p.j;
-        else
-            return p.i < i;
-    }
-
-    FORCE_INLINE bool operator==(const PointIJ &p) const
-    {
-        return i == p.i && j == p.j;
-    }
-
-    FORCE_INLINE bool operator!=(const PointIJ &p) const
-    {
-        return i != p.i || j != p.j;
-    }
-
-    friend std::ostream & operator<<(std::ostream &stream, const PointIJ &p)
-    {
-        stream << "(" << p.i << "," << p.j << ")";
-        return stream;
-    }
-
-    short i, j;
-};
-#pragma pack(pop)
-
 
 typedef uint32_t EdgeIdx;
 
@@ -65,7 +20,37 @@ const uint32_t maxNumEdges = 512 * 1024;
 const uint32_t maxNumTriangles = maxNumEdges / 2;
 const EdgeIdx INVALID_EDGE = std::numeric_limits<EdgeIdx>::max();
 
-void sortPoints(std::vector<PointIJ> &points, std::vector<short> &indexMap);
-void triangulate(std::vector<PointIJ> &points, EdgeIdx &le);
-void showTriangulation(cv::Mat &img, EdgeIdx le, EdgeIdx re = INVALID_EDGE, EdgeIdx base = INVALID_EDGE);
-void generateTriangles(EdgeIdx startEdge);
+// this structure is left unpacked, cause it turns out faster this way
+struct TriEdge
+{
+    uint16_t origPnt;  // index of edge's origin point
+    EdgeIdx symEdge;  // index of pair edge, with same endpoints and opposite direction
+    EdgeIdx nextCcwEdge;  // next counterclockwise (CCW) edge around the origin
+    EdgeIdx prevCcwEdge;  // previous CCW edge around the origin (or next CW edge)
+};
+
+class Delaunay
+{
+    class DelaunayImpl;
+
+public:
+    Delaunay();
+    ~Delaunay();
+
+    void operator()(std::vector<PointIJ> &points, std::vector<short> &indexMap);
+
+    void init(const std::vector<PointIJ> &points);
+    void sortPoints(std::vector<PointIJ> &points, std::vector<short> &indexMap);
+    void triangulate();
+    void generateTriangles();
+
+    void plotTriangulation(cv::Mat &img);
+    static void saveTriangulation(const std::string &filename, int numP, const PointIJ *p, int numT, const Triangle *t);
+    static void loadTriangulation(const std::string &filename, std::vector<PointIJ> &p, std::vector<Triangle> &t);
+
+    bool isEqualTo(const std::vector<PointIJ> &p, const std::vector<Triangle> &t) const;
+
+private:
+    std::unique_ptr<DelaunayImpl> data;
+};
+

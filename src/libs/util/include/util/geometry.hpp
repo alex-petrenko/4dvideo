@@ -7,6 +7,69 @@
 #include <util/macro.hpp>
 
 
+/// Types.
+
+/// Represents pixel on the image.
+#pragma pack(push, 1)
+struct PointIJ
+{
+    PointIJ()
+        : i(0)
+        , j(0)
+    {
+    }
+
+    PointIJ(short i, short j)
+        : i(i)
+        , j(j)
+    {
+    }
+
+    // Note! Sorts by x-coordinate first (j first)
+    FORCE_INLINE bool operator<(const PointIJ &p) const
+    {
+        if (j != p.j)
+            return j < p.j;
+        else
+            return p.i < i;
+    }
+
+    FORCE_INLINE bool operator==(const PointIJ &p) const
+    {
+        return i == p.i && j == p.j;
+    }
+
+    FORCE_INLINE bool operator!=(const PointIJ &p) const
+    {
+        return i != p.i || j != p.j;
+    }
+
+    friend std::ostream & operator<<(std::ostream &stream, const PointIJ &p)
+    {
+        stream << "(" << p.i << "," << p.j << ")";
+        return stream;
+    }
+
+    short i, j;
+};
+#pragma pack(pop)
+
+/// Triangle described by three vertex indices.
+struct Triangle
+{
+    uint16_t p1, p2, p3;
+};
+
+enum Orientation
+{
+    ORIENT_CW,
+    ORIENT_CCW,
+    ORIENT_COLLINEAR,
+};
+
+
+/// Functions.
+
 inline bool project3dPointTo2d(const cv::Point3f &p,
                                double f,
                                double cx,
@@ -24,19 +87,11 @@ inline bool project3dPointTo2d(const cv::Point3f &p,
     jImg = int(fDivZ * p.x + cx);
     if (jImg < 0 || jImg >= w)
         return false;
-    depth = uint16_t(p.z * 1000);
+    depth = uint16_t(p.z * 1000);  // depth is in millimeters
     return true;
 }
 
-
-enum Orientation
-{
-    ORIENT_CW,
-    ORIENT_CCW,
-    ORIENT_COLLINEAR,
-};
-
-inline Orientation triOrientation(int x1, int y1, int x2, int y2, int x3, int y3)
+FORCE_INLINE Orientation triOrientation(int x1, int y1, int x2, int y2, int x3, int y3)
 {
     const int val = (y2 - y1) * (x3 - x2) - (x2 - x1) * (y3 - y2);
     if (val < 0)
@@ -68,8 +123,8 @@ FORCE_INLINE bool inCircle(int x1, int y1, int x2, int y2, int x3, int y3, int p
 
     // determinant of matrix, see paper for the reference
     const int64_t res = p1p_x * (p2p_y * p3p - p2p * p3p_y)
-        - p1p_y * (p2p_x * p3p - p2p * p3p_x)
-        + p1p * (p2p_x * p3p_y - p2p_y * p3p_x);
+                      - p1p_y * (p2p_x * p3p - p2p * p3p_x)
+                      + p1p * (p2p_x * p3p_y - p2p_y * p3p_x);
 
     assert(std::abs(res) < std::numeric_limits<int64>::max() / 100);
 
