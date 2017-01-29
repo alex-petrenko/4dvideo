@@ -25,6 +25,7 @@ public:
 
 private:
     std::ostream *stream;
+    LogLevel level;
 };
 
 class NullStream : public std::ostream

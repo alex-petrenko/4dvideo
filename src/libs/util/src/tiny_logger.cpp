@@ -51,8 +51,9 @@ void printTime(std::ostream &stream)
 }
 
 
-LogMessage::LogMessage(LogLevel level, const char *file, int line, const char *func)
+LogMessage::LogMessage(LogLevel lvl, const char *file, int line, const char *func)
     : stream(nullptr)
+    , level(lvl)
 {
     if (level > logLevel)
     {
@@ -81,6 +82,9 @@ LogMessage::~LogMessage()
 {
     if (stream)
         *stream << '\n';
+
+    if (level == FATAL)
+        abort();
 }
 
 std::ostream & LogMessage::operator()()

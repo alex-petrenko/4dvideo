@@ -1,6 +1,4 @@
-macro(common_settings)
-  set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
+macro(set_compiler_flags)
   if(MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
     message(STATUS "Added parallel build arguments to CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
@@ -20,11 +18,26 @@ macro(common_settings)
   add_definitions(-D_SCL_SECURE_NO_WARNINGS)  # VS annoying warnings
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)  # VS annoying warnings
   add_definitions(-D_USE_MATH_DEFINES)  # to enable stuff like M_PI
+endmacro()
+
+macro(find_modules)
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/")
+  message(STATUS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/")
+  message(STATUS "${CMAKE_MODULE_PATH}")
 
   find_package(OpenCV REQUIRED)
   include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
+
+  find_package(GLFW3 3.2 REQUIRED)
 endmacro()
 
+macro(common_settings)
+  set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+  set_compiler_flags()
+
+  find_modules()
+endmacro()
 
 macro(collect_sources_default name)
   file(GLOB SOURCES src/*.cpp)
