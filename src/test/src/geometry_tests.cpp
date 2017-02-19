@@ -43,3 +43,24 @@ TEST(geom, inCircle)
         }
     }
 }
+
+TEST(geom, triangleArea3D)
+{
+    const cv::Point3f a, b(1, 0, 0), c(0, 1, 0);
+    float area = triangleArea3D(a, b, c);
+    EXPECT_EQ(area, 0.5f);
+
+    area = triangleArea3D(a, a, b);
+    EXPECT_EQ(area, 0.0f);
+
+    const cv::Point3f ab(b - a), bc(c - b), ca(a - c);
+    const float na = float(cv::norm(ab)), nb = float(cv::norm(bc)), nc = float(cv::norm(ca));
+    area = triangleArea3DHeron(na, nb, nc);
+    EXPECT_NEAR(area, 0.5f, EPSILON);
+
+    area = triangleArea3DHeronSq(na, nb, nc);
+    EXPECT_NEAR(area, 0.25f, EPSILON);
+
+    area = triangleArea3DHeron(0, 1, 1);
+    EXPECT_NEAR(area, 0.0f, EPSILON);
+}

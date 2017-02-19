@@ -1,4 +1,11 @@
+set(CURRENT_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
 macro(set_compiler_flags)
+  if(MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Za")
+    message(STATUS "Disable Microsoft language extensions: ${CMAKE_CXX_FLAGS}")
+  endif()
+
   if(MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
     message(STATUS "Added parallel build arguments to CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
@@ -21,14 +28,22 @@ macro(set_compiler_flags)
 endmacro()
 
 macro(find_modules)
-  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/")
-  message(STATUS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/")
+  list(APPEND CMAKE_MODULE_PATH "${CURRENT_DIR}/modules/")
+  message(STATUS "${CURRENT_DIR}/modules/")
   message(STATUS "${CMAKE_MODULE_PATH}")
 
   find_package(OpenCV REQUIRED)
   include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
 
   find_package(GLFW3 3.2 REQUIRED)
+
+  find_package(GLEW REQUIRED)
+
+  find_package(OpenGL REQUIRED)
+  message(STATUS "OpenGL found: ${OPENGL_FOUND}, libraries: ${OPENGL_LIBRARIES}")
+
+  set(GLM_INCLUDES "${CURRENT_DIR}/../3rdparty/glm" CACHE INTERNAL "glm includes")
+  message(STATUS "GLM include dir: ${GLM_INCLUDES}")
 endmacro()
 
 macro(common_settings)

@@ -7,3 +7,6 @@
 #else
     #define FORCE_INLINE __forceinline
 #endif
+
+
+#define EPSILON 1e-5f

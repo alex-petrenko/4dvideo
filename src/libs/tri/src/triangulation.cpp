@@ -158,6 +158,14 @@ private:
     /// Merge phase. Joining left and right triangulations into one.
     FORCE_INLINE void mergeTriangulations(EdgeIdx lle, EdgeIdx lre, EdgeIdx rle, EdgeIdx rre, EdgeIdx &le, EdgeIdx &re);
 
+    // Read results.
+
+    /// Returns number of triangles and pointer to the triangle array.
+    void getTriangles(Triangle *&t, int &num)
+    {
+        t = triangles;
+        num = numTriangles;
+    }
 
     // Auxiliary stuff.
 
@@ -842,11 +850,13 @@ void Delaunay::DelaunayImpl::plotTriangulation(cv::Mat &img, EdgeIdx le, EdgeIdx
                 color = cv::Scalar(0, 0xA5, 0xFF), specialFace = true, thickness = 5;
 
             if (!visited[destPntIdx] || specialFace)
+            {
                 cv::line(img,
-                    cv::Point2i(int(currPnt.j * scaleJ + ofs), int(currPnt.i * scaleI + ofs)),
-                    cv::Point2i(int(destPnt.j * scaleJ + ofs), int(destPnt.i * scaleI + ofs)),
-                    color,
-                    thickness);
+                         cv::Point2i(int(currPnt.j * scaleJ + ofs), int(currPnt.i * scaleI + ofs)),
+                         cv::Point2i(int(destPnt.j * scaleJ + ofs), int(destPnt.i * scaleI + ofs)),
+                         color,
+                         thickness);
+            }
 
             if (specialFace)
                 cv::circle(img, cv::Point2i(int(currPnt.j * scaleJ + ofs), int(currPnt.i * scaleI + ofs)), 4, color, 4);
@@ -931,6 +941,12 @@ void Delaunay::plotTriangulation(cv::Mat &img)
     data->plotTriangulation(img, data->leftmostEdge);
 }
 
+void Delaunay::showTriangulation()
+{
+    cv::Mat image;
+    data->showTriangulation(image, data->leftmostEdge);
+}
+
 void Delaunay::saveTriangulation(const std::string &filename, int numP, const PointIJ *p, int numT, const Triangle *t)
 {
     DelaunayImpl::saveTriangulation(filename, numP, p, numT, t);
@@ -944,4 +960,9 @@ void Delaunay::loadTriangulation(const std::string &filename, std::vector<PointI
 bool Delaunay::isEqualTo(const std::vector<PointIJ> &p, const std::vector<Triangle> &t) const
 {
     return data->isEqualTo(p, t);
+}
+
+void Delaunay::getTriangles(Triangle *&t, int &num)
+{
+    return data->getTriangles(t, num);
 }

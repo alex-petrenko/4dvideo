@@ -45,10 +45,13 @@ public:
     void generateTriangles();
 
     void plotTriangulation(cv::Mat &img);
+    void showTriangulation();
     static void saveTriangulation(const std::string &filename, int numP, const PointIJ *p, int numT, const Triangle *t);
     static void loadTriangulation(const std::string &filename, std::vector<PointIJ> &p, std::vector<Triangle> &t);
 
     bool isEqualTo(const std::vector<PointIJ> &p, const std::vector<Triangle> &t) const;
+
+    void getTriangles(Triangle *&t, int &num);
 
 private:
     std::unique_ptr<DelaunayImpl> data;

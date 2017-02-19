@@ -130,3 +130,45 @@ FORCE_INLINE bool inCircle(int x1, int y1, int x2, int y2, int x3, int y3, int p
 
     return res < 0;
 }
+
+inline cv::Point3f triNormal(cv::Point3f &v1, cv::Point3f &v2, cv::Point3f &v3)
+{
+    cv::Point3f n = ((v3 - v1).cross(v2 - v1));
+    n *= 1.0f / cv::norm(n);
+    return n;
+}
+
+inline float triangleArea3D(const cv::Point3f &a, const cv::Point3f &b, const cv::Point3f &c)
+{
+    const cv::Point3f ab(b - a), ac(c - a);
+    const float normAB = float(cv::norm(ab)), normAC = float(cv::norm(ac));
+    if (normAB < EPSILON || normAC < EPSILON)
+        return 0.0f;
+    const float angle = acosf(ab.dot(ac) / (normAB * normAC));
+    const float area = float(0.5 * normAB * normAC * sinf(angle));
+    return area;
+}
+
+inline float triangleArea3DHeronSq(float a, float b, float c)
+{
+    const float p = a + b + c;
+    const float s = 0.5f * p;
+    return s * (s - a) * (s - b) * (s - c);
+}
+
+inline float triangleArea3DHeron(float a, float b, float c)
+{
+    const float areaSquared = triangleArea3DHeronSq(a, b, c);
+    if (areaSquared >= 0.0f)
+        return sqrtf(areaSquared);
+    else
+        return 0.0f;
+}
+
+inline cv::Point3d meanPoint(const std::vector<cv::Point3f> &points)
+{
+    cv::Point3d mean(0, 0, 0);
+    for (const auto &p : points)
+        mean += cv::Point3d(p);
+    return mean * (1.0 / points.size());
+}
