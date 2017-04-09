@@ -432,6 +432,7 @@ void readDataset(const std::string &datasetPath)
     //std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\dataset2.bin)", std::ios::binary);
     std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\special_datasets\002_yoga_wall.bin)", std::ios::binary);
     //std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\special_datasets\003_push_ups.bin)", std::ios::binary);
+    //std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\1487499749_dataset.bin)", std::ios::binary);
 
     cv::Mat imageBgr(720, 1080, CV_8UC3);
     cv::Mat image(3 * 720 / 2, 1280, CV_8UC1);
@@ -591,5 +592,5 @@ int main(int argc, char *argv[])
 
     readingThread.join();
 
-    return 0;
+    return EXIT_SUCCESS;
 }

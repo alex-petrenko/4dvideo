@@ -44,6 +44,9 @@ macro(find_modules)
 
   set(GLM_INCLUDES "${CURRENT_DIR}/../3rdparty/glm" CACHE INTERNAL "glm includes")
   message(STATUS "GLM include dir: ${GLM_INCLUDES}")
+
+  find_package(RSSDK)
+  message(STATUS "RSSDK found: ${RSSDK_FOUND}, libraries: ${RSSDK_LIBS}")
 endmacro()
 
 macro(common_settings)
@@ -73,9 +76,8 @@ macro(add_library_default name)
   target_include_directories(${name} PUBLIC include)
 endmacro()
 
-macro(add_app_default name)
-  collect_sources_default(${name})
-  add_executable(${name} ${SOURCES} ${HEADERS})
+macro(add_app_default name src)
+  add_executable(${name} ${src})
   set_default_properties(${name} "apps")
 endmacro()
 
