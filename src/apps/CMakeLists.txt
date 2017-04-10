@@ -8,4 +8,4 @@ target_link_libraries(format_converter util ${OpenCV_LIBS})
 
 include_directories(${RSSDK_INCLUDES})
 add_app_default(realsense_grabber src/realsense_grabber.cpp)
-target_link_libraries(realsense_grabber util ${OpenCV_LIBS} ${RSSDK_LIBS})
+target_link_libraries(realsense_grabber util realsense ${OpenCV_LIBS})
