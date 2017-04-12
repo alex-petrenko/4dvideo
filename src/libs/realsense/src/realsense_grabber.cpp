@@ -1,21 +1,40 @@
-#include <memory>
-#include <fstream>
+#include <realsense/realsense_grabber.hpp>
 
 #ifdef _MSC_VER
-    #pragma warning(push)
-    #pragma warning(disable: 4309)  // truncation of const value
+#pragma warning(push)
+#pragma warning(disable: 4309)  // truncation of const value
 #endif
 #include <pxcsensemanager.h>
 #ifdef _MSC_VER
-    #pragma warning(pop)
+#pragma warning(pop)
 #endif
 
 #include <util/tiny_logger.hpp>
 
 
-int main()
+struct RealsenseGrabber::RealsenseGrabberImpl
 {
-    PXCSenseManager *senseManager = PXCSenseManager::CreateInstance();
+    PXCSenseManager *senseManager;
+
+    /// Multiple queues used to pass frames to different consumers.
+    std::vector<FrameQueue *> queues;
+};
+
+
+RealsenseGrabber::RealsenseGrabber()
+{
+    data.reset(new RealsenseGrabberImpl);
+}
+
+RealsenseGrabber::~RealsenseGrabber()
+{
+    data->senseManager->Release();
+}
+
+void RealsenseGrabber::init()
+{
+    data->senseManager = PXCSenseManager::CreateInstance();
+    auto senseManager = data->senseManager;
 
     auto session = senseManager->QuerySession();
     auto version = session->QueryVersion();
@@ -70,6 +89,11 @@ int main()
     device->SetColorAutoExposure(true);
     device->SetColorAutoWhiteBalance(true);
     device->SetDSLeftRightAutoExposure(true);
+}
+
+void RealsenseGrabber::run()
+{
+    auto senseManager = data->senseManager;
 
     int numFrames = 0;
 
@@ -94,15 +118,20 @@ int main()
             continue;
         }
 
-
         const auto colorInfo = sample->color->QueryInfo(), depthInfo = sample->depth->QueryInfo();
         senseManager->ReleaseFrame();
         ++numFrames;
         TLOG(INFO) << "Captured color frame #" << numFrames << " " << colorInfo.format << " " << colorInfo.width << " " << colorInfo.height << " " << colorInfo.reserved;
         TLOG(INFO) << "Captured depth frame #" << numFrames << " " << depthInfo.format << " " << depthInfo.width << " " << depthInfo.height << " " << depthInfo.reserved;
+
+        Frame *frame = new Frame;
+
+        for (auto queue : data->queues)
+            queue->put(std::shared_ptr<Frame>(frame));
     }
+}
 
-    senseManager->Release();
-
-    return EXIT_SUCCESS;
+void RealsenseGrabber::addQueue(FrameQueue *queue)
+{
+    data->queues.push_back(queue);
 }
