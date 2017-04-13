@@ -6,6 +6,7 @@
 template<typename QueueType>
 class Consumer
 {
+protected:
     typedef typename QueueType::ElementType Item;
 
 public:
@@ -13,6 +14,8 @@ public:
         : q(q)
     {
     }
+
+    virtual ~Consumer() = default;
 
     void run()
     {
@@ -29,7 +32,7 @@ public:
     }
 
 private:
-    void process(Item &item)
+    virtual void process(Item &)
     {
         TLOG(INFO);
     }

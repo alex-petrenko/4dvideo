@@ -1,7 +1,8 @@
 #include <thread>
 
-#include <util/consumer.hpp>
 #include <util/tiny_logger.hpp>
+
+#include <3dvideo/grabber_visualizer.hpp>
 
 #include <realsense/realsense_grabber.hpp>
 
@@ -27,7 +28,7 @@ int main()
 
     std::thread visualizerThread([&]()
     {
-        Consumer<FrameQueue> visualizer(visualizerQueue);
+        GrabberVisualizer visualizer(visualizerQueue);
         visualizer.run();
     });
 

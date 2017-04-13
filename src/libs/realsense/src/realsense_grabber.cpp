@@ -90,7 +90,13 @@ void RealsenseGrabber::init()
     senseManager->Init();
 
     TLOG(INFO) << "Setting device properties...";
-    auto device = senseManager->QueryCaptureManager()->QueryDevice();
+    auto captureManager = senseManager->QueryCaptureManager();
+    if (!captureManager)
+        return;
+    auto device = captureManager->QueryDevice();
+    if (!device)
+        return;
+
     device->SetColorAutoExposure(true);
     device->SetColorAutoWhiteBalance(true);
     device->SetDSLeftRightAutoExposure(true);
@@ -102,43 +108,63 @@ void RealsenseGrabber::run()
 
     int numFrames = 0;
 
-    while (senseManager->AcquireFrame(true, 1000) >= PXC_STATUS_NO_ERROR)
+    RealSense::Status status;
+    while ((status = senseManager->AcquireFrame(true, 1000)) >= PXC_STATUS_NO_ERROR)
     {
-        PXCCapture::Sample *sample = senseManager->QuerySample();
+        auto sample = senseManager->QuerySample();
+        
         if (!sample)
         {
             TLOG(ERROR) << "Sample is null";
             continue;
         }
 
-        if (!sample->color)
+        auto color = sample->color, depth = sample->depth;
+        if (!color)
         {
             TLOG(ERROR) << "Color is null";
             continue;
         }
-
-        if (!sample->depth)
+        if (!depth)
         {
             TLOG(ERROR) << "Depth is null";
             continue;
         }
 
-        const auto colorInfo = sample->color->QueryInfo(), depthInfo = sample->depth->QueryInfo();
+        const auto colorInfo = color->QueryInfo(), depthInfo = depth->QueryInfo();
         ++numFrames;
         TLOG(INFO) << "Captured color frame #" << numFrames << " " << colorInfo.format << " " << colorInfo.width << " " << colorInfo.height << " " << colorInfo.reserved;
         TLOG(INFO) << "Captured depth frame #" << numFrames << " " << depthInfo.format << " " << depthInfo.width << " " << depthInfo.height << " " << depthInfo.reserved;
 
-        RealSense::Image::ImageData colorData;
-        sample->color->AcquireAccess(RealSense::Image::ACCESS_READ, RealSense::Image::PIXEL_FORMAT_BGR, &colorData);
+        RealSense::Image::ImageData colorData, depthData;
+
+        auto accessStatus = color->AcquireAccess(RealSense::Image::ACCESS_READ, RealSense::Image::PIXEL_FORMAT_BGR, &colorData);
+        if (accessStatus < PXC_STATUS_NO_ERROR)
+        {
+            TLOG(ERROR) << "Could not acquire access to color buffer for frame #" << numFrames << ", status is: " << accessStatus;
+            continue;
+        }
         cv::Mat colorMat(colorInfo.height, colorInfo.width, CV_8UC3, colorData.planes[0]);
-        std::shared_ptr<Frame> frame = std::make_shared<Frame>(colorMat);
-        sample->color->ReleaseAccess(&colorData);
+        color->ReleaseAccess(&colorData);
+
+        accessStatus = depth->AcquireAccess(RealSense::Image::ACCESS_READ, RealSense::Image::PIXEL_FORMAT_DEPTH, &depthData);
+        if (accessStatus < PXC_STATUS_NO_ERROR)
+        {
+            TLOG(ERROR) << "Could not acquire access to depth buffer for frame #" << numFrames << ", status is: " << accessStatus;
+            continue;
+        }
+        cv::Mat depthMat(depthInfo.height, depthInfo.width, CV_16UC1, depthData.planes[0]);
+        depth->ReleaseAccess(&depthData);
 
         senseManager->ReleaseFrame();
+
+        std::shared_ptr<Frame> frame = std::make_shared<Frame>(colorMat, depthMat);
 
         for (auto queue : data->queues)
             queue->put(std::shared_ptr<Frame>(frame));
     }
+
+    TLOG(INFO) << "Grabbing thread has finished, last status: " << status;
 }
 
 void RealsenseGrabber::addQueue(FrameQueue *queue)
