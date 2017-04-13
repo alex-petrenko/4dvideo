@@ -1,4 +1,4 @@
-#include <realsense/realsense_grabber.hpp>
+#include <opencv2/core.hpp>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -9,7 +9,12 @@
 #pragma warning(pop)
 #endif
 
+#include <realsense/realsense_grabber.hpp>
+
 #include <util/tiny_logger.hpp>
+
+
+using namespace Intel;
 
 
 struct RealsenseGrabber::RealsenseGrabberImpl
@@ -79,8 +84,8 @@ void RealsenseGrabber::init()
     }
 
     TLOG(INFO) << "Enabling streams...";
-    senseManager->EnableStream(Intel::RealSense::StreamType::STREAM_TYPE_COLOR, 1920, 1080, 30, PXCCapture::Device::STREAM_OPTION_STRONG_STREAM_SYNC);
-    senseManager->EnableStream(Intel::RealSense::StreamType::STREAM_TYPE_DEPTH, 480, 360, 30);  // also supports 628x468
+    senseManager->EnableStream(RealSense::StreamType::STREAM_TYPE_COLOR, 1920, 1080, 30, PXCCapture::Device::STREAM_OPTION_STRONG_STREAM_SYNC);
+    senseManager->EnableStream(RealSense::StreamType::STREAM_TYPE_DEPTH, 480, 360, 30);  // also supports 628x468
 
     senseManager->Init();
 
@@ -119,12 +124,17 @@ void RealsenseGrabber::run()
         }
 
         const auto colorInfo = sample->color->QueryInfo(), depthInfo = sample->depth->QueryInfo();
-        senseManager->ReleaseFrame();
         ++numFrames;
         TLOG(INFO) << "Captured color frame #" << numFrames << " " << colorInfo.format << " " << colorInfo.width << " " << colorInfo.height << " " << colorInfo.reserved;
         TLOG(INFO) << "Captured depth frame #" << numFrames << " " << depthInfo.format << " " << depthInfo.width << " " << depthInfo.height << " " << depthInfo.reserved;
 
-        Frame *frame = new Frame;
+        RealSense::Image::ImageData colorData;
+        sample->color->AcquireAccess(RealSense::Image::ACCESS_READ, RealSense::Image::PIXEL_FORMAT_BGR, &colorData);
+        cv::Mat colorMat(colorInfo.height, colorInfo.width, CV_8UC3, colorData.planes[0]);
+        std::shared_ptr<Frame> frame = std::make_shared<Frame>(colorMat);
+        sample->color->ReleaseAccess(&colorData);
+
+        senseManager->ReleaseFrame();
 
         for (auto queue : data->queues)
             queue->put(std::shared_ptr<Frame>(frame));

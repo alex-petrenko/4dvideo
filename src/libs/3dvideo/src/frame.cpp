@@ -3,9 +3,10 @@
 #include <util/tiny_logger.hpp>
 
 
-Frame::Frame()
+Frame::Frame(const cv::Mat &color)
+    : color(color)
 {
-    TLOG(INFO);
+    TLOG(INFO) << color.cols << " " << color.rows;
 }
 
 Frame::~Frame()

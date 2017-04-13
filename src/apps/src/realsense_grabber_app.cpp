@@ -13,10 +13,16 @@ int main()
     std::thread grabberThread([&]()
     {
         RealsenseGrabber grabber;
-        //grabber.addQueue(&writerQueue);
+        grabber.addQueue(&writerQueue);
         grabber.addQueue(&visualizerQueue);
         grabber.init();
         grabber.run();
+    });
+
+    std::thread writerThread([&]()
+    {
+        Consumer<FrameQueue> writer(writerQueue);
+        writer.run();
     });
 
     std::thread visualizerThread([&]()
@@ -26,6 +32,8 @@ int main()
     });
 
     grabberThread.join();
+    writerThread.join();
+    visualizerThread.join();
 
     return EXIT_SUCCESS;
 }
