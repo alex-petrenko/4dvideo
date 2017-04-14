@@ -1,7 +1,7 @@
 #include <util/string_utils.hpp>
 
 
-std::vector<std::string> splitString(const std::string & s, const std::string & d)
+std::vector<std::string> splitString(const std::string &s, const std::string &d)
 {
     std::vector<std::string> result;
 

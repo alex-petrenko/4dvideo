@@ -7,15 +7,16 @@
 namespace
 {
 
-    // helper functions
+// helper functions
 
-    inline void resizeImg(const cv::Mat &img, cv::Mat &dst, int w, int h)
-    {
-        if (img.cols != w || img.rows != h)
-            cv::resize(img, dst, cv::Size(w, h), 0, 0, cv::INTER_NEAREST);
-        else
-            dst = img;
-    }
+inline void resizeImg(const cv::Mat &img, cv::Mat &dst, int w, int h)
+{
+    if (img.cols != w || img.rows != h)
+        cv::resize(img, dst, cv::Size(w, h), 0, 0, cv::INTER_NEAREST);
+    else
+        dst = img;
+}
+
 }
 
 

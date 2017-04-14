@@ -1,7 +1,9 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 #include <ostream>
+#include <sstream>
 #include <iostream>
 
 
@@ -18,21 +20,22 @@ enum LogLevel
 class LogMessage
 {
 public:
-    LogMessage(LogLevel level, const char *file, int line, const char *func);
+    LogMessage(LogLevel level, const char *file, int line, const char *func, std::ostream *outStream = &std::cout);
     ~LogMessage();
 
-    std::ostream & operator()();
+    std::ostringstream & operator()();
 
 private:
-    std::ostream *stream;
+    std::shared_ptr<std::ostringstream> stream;
+    std::ostream *outStream;
     LogLevel level;
 };
 
-class NullStream : public std::ostream
+class NullStream : public std::ostringstream
 {
 public:
     NullStream()
-        : std::ostream(nullptr)
+        : std::ostringstream()
     {}
 };
 

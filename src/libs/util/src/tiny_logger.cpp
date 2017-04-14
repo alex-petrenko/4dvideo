@@ -1,3 +1,4 @@
+#include <mutex>
 #include <chrono>
 #include <iomanip>
 
@@ -51,18 +52,19 @@ void printTime(std::ostream &stream)
 }
 
 
-LogMessage::LogMessage(LogLevel lvl, const char *file, int line, const char *func)
+LogMessage::LogMessage(LogLevel lvl, const char *file, int line, const char *func, std::ostream *outStream)
     : stream(nullptr)
     , level(lvl)
+    , outStream(outStream)
 {
     if (level > logLevel)
     {
-        static NullStream nullStream;
-        stream = &nullStream;
+        static std::shared_ptr<std::ostringstream> nullStream = std::make_shared<NullStream>();
+        stream = nullStream;
     }
     else
     {
-        stream = &std::cout;
+        stream = std::make_shared<std::ostringstream>();
 
         *stream << "[";
         printTime(*stream);
@@ -83,11 +85,18 @@ LogMessage::~LogMessage()
     if (stream)
         *stream << '\n';
 
+    if (level <= logLevel)
+    {
+        static std::mutex mutex;
+        std::lock_guard<std::mutex> lock(mutex);
+        *outStream << stream->str();
+    }
+
     if (level == FATAL)
         abort();
 }
 
-std::ostream & LogMessage::operator()()
+std::ostringstream & LogMessage::operator()()
 {
     return *stream;
 }
