@@ -13,7 +13,7 @@ class RealsenseGrabber : public Producer<FrameQueue>
     struct RealsenseGrabberImpl;
 
 public:
-    RealsenseGrabber();
+    RealsenseGrabber(const CancellationToken &cancellationToken);
     virtual ~RealsenseGrabber();
 
     void init();

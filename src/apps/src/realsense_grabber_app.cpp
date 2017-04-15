@@ -9,11 +9,12 @@
 
 int main()
 {
+    CancellationToken cancellationToken;
     FrameQueue writerQueue, visualizerQueue;
 
     std::thread grabberThread([&]()
     {
-        RealsenseGrabber grabber;
+        RealsenseGrabber grabber(cancellationToken);
         grabber.addQueue(&writerQueue);
         grabber.addQueue(&visualizerQueue);
         grabber.init();
@@ -22,13 +23,13 @@ int main()
 
     std::thread writerThread([&]()
     {
-        Consumer<FrameQueue> writer(writerQueue);
+        Consumer<FrameQueue> writer(writerQueue, cancellationToken);
         writer.run();
     });
 
     std::thread visualizerThread([&]()
     {
-        GrabberVisualizer visualizer(visualizerQueue);
+        GrabberVisualizer visualizer(visualizerQueue, cancellationToken);
         visualizer.run();
     });
 

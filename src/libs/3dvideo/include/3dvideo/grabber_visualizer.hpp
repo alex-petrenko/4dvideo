@@ -10,7 +10,7 @@ class GrabberVisualizer : public FrameConsumer
     static_assert(std::is_same<std::shared_ptr<Frame>, FrameConsumer::Item>::value, "Consumer item type must be Frame ptr");
 
 public:
-    GrabberVisualizer(FrameQueue &q);
+    GrabberVisualizer(FrameQueue &q, const CancellationToken &cancellationToken);
     virtual ~GrabberVisualizer();
 
 private:

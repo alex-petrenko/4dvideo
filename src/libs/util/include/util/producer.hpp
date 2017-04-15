@@ -1,6 +1,7 @@
 #pragma once
 
-#include <util/tiny_logger.hpp>
+
+#include <util/cancellation_token.hpp>
 
 
 template<typename QueueType>
@@ -10,7 +11,8 @@ protected:
     typedef typename QueueType::ElementType Item;
 
 public:
-    Producer()
+    Producer(const CancellationToken &cancel)
+        : cancel(cancel)
     {
     }
 
@@ -28,4 +30,5 @@ public:
 protected:
     /// Multiple queues used to pass frames to different consumers.
     std::vector<QueueType *> queues;
+    const CancellationToken &cancel;
 };

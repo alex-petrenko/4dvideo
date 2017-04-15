@@ -1,6 +1,8 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 
+#include <util/tiny_logger.hpp>
+
 #include <3dvideo/grabber_visualizer.hpp>
 
 
@@ -20,8 +22,8 @@ inline void resizeImg(const cv::Mat &img, cv::Mat &dst, int w, int h)
 }
 
 
-GrabberVisualizer::GrabberVisualizer(FrameQueue &q)
-    : FrameConsumer(q)
+GrabberVisualizer::GrabberVisualizer(FrameQueue &q, const CancellationToken &cancellationToken)
+    : FrameConsumer(q, cancellationToken)
 {
     TLOG(INFO);
 }

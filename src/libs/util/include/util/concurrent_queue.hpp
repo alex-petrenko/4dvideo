@@ -22,15 +22,15 @@ public:
         cv.notify_one();
     }
 
+    /// Returns false if there are no items in the queue after timeoutMs milliseconds.
     bool pop(T &item, int timeoutMs)
     {
         std::unique_lock<std::mutex> lock(mutex);
         if (q.empty())
-        {
             cv.wait_for(lock, std::chrono::milliseconds(timeoutMs));
-            if (q.empty())
-                return false;
-        }
+
+        if (q.empty())
+            return false;  // timed out
 
         item = q.front();
         q.pop();

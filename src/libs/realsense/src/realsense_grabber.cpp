@@ -23,7 +23,8 @@ struct RealsenseGrabber::RealsenseGrabberImpl
 };
 
 
-RealsenseGrabber::RealsenseGrabber()
+RealsenseGrabber::RealsenseGrabber(const CancellationToken &cancellationToken)
+    : Producer(cancellationToken)
 {
     data.reset(new RealsenseGrabberImpl);
 }
@@ -105,9 +106,13 @@ void RealsenseGrabber::run()
 
     int numFrames = 0;
 
-    RealSense::Status status;
-    while ((status = senseManager->AcquireFrame(true, 1000)) >= PXC_STATUS_NO_ERROR)
+    RealSense::Status status = PXC_STATUS_NO_ERROR;
+    while (!cancel)
     {
+        status = senseManager->AcquireFrame(true, 1000);
+        if (status < PXC_STATUS_NO_ERROR)
+            break;
+
         auto sample = senseManager->QuerySample();
         
         if (!sample)

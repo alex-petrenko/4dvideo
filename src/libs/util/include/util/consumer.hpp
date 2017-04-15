@@ -1,6 +1,6 @@
 #pragma once
 
-#include <util/tiny_logger.hpp>
+#include <util/cancellation_token.hpp>
 
 
 template<typename QueueType>
@@ -10,8 +10,9 @@ protected:
     typedef typename QueueType::ElementType Item;
 
 public:
-    Consumer(QueueType &q)
+    Consumer(QueueType &q, const CancellationToken &cancel)
         : q(q)
+        , cancel(cancel)
     {
     }
 
@@ -19,9 +20,8 @@ public:
 
     void run()
     {
-        while (true)
+        while (!cancel)
         {
-            // cancellation token?
             Item item;
             const bool hasItem = q.pop(item, timeoutMs);
             if (!hasItem)
@@ -34,12 +34,13 @@ public:
 private:
     virtual void process(Item &)
     {
-        TLOG(INFO);
     }
 
 private:
-    static constexpr int defaultTimeoutMs = 300;
+    static constexpr int defaultTimeoutMs = 100;
 
     int timeoutMs = defaultTimeoutMs;
+
     QueueType &q;
+    const CancellationToken &cancel;
 };
