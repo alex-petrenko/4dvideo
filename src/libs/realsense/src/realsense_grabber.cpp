@@ -20,9 +20,6 @@ using namespace Intel;
 struct RealsenseGrabber::RealsenseGrabberImpl
 {
     PXCSenseManager *senseManager;
-
-    /// Multiple queues used to pass frames to different consumers.
-    std::vector<FrameQueue *> queues;
 };
 
 
@@ -160,14 +157,9 @@ void RealsenseGrabber::run()
 
         std::shared_ptr<Frame> frame = std::make_shared<Frame>(colorMat, depthMat);
 
-        for (auto queue : data->queues)
+        for (auto queue : queues)
             queue->put(std::shared_ptr<Frame>(frame));
     }
 
     TLOG(INFO) << "Grabbing thread has finished, last status: " << status;
-}
-
-void RealsenseGrabber::addQueue(FrameQueue *queue)
-{
-    data->queues.push_back(queue);
 }
