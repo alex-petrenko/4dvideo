@@ -1,5 +1,7 @@
 #include <thread>
 
+#include <opencv2/highgui.hpp>
+
 #include <util/tiny_logger.hpp>
 
 #include <3dvideo/grabber_visualizer.hpp>
@@ -33,9 +35,9 @@ int main()
         visualizer.run();
     });
 
-    grabberThread.join();
     writerThread.join();
     visualizerThread.join();
+    grabberThread.join();
 
     return EXIT_SUCCESS;
 }

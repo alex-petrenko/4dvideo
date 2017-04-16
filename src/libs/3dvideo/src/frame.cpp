@@ -12,5 +12,4 @@ Frame::Frame(const cv::Mat &color, const cv::Mat &depth)
 
 Frame::~Frame()
 {
-    TLOG(INFO);
 }

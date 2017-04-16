@@ -10,7 +10,7 @@ protected:
     typedef typename QueueType::ElementType Item;
 
 public:
-    Consumer(QueueType &q, const CancellationToken &cancel)
+    Consumer(QueueType &q, CancellationToken &cancel)
         : q(q)
         , cancel(cancel)
     {
@@ -36,11 +36,13 @@ private:
     {
     }
 
+protected:
+    CancellationToken &cancel;
+
 private:
     static constexpr int defaultTimeoutMs = 100;
 
     int timeoutMs = defaultTimeoutMs;
 
     QueueType &q;
-    const CancellationToken &cancel;
 };

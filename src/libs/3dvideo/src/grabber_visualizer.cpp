@@ -9,6 +9,8 @@
 namespace
 {
 
+constexpr char escape = 27;
+
 // helper functions
 
 inline void resizeImg(const cv::Mat &img, cv::Mat &dst, int w, int h)
@@ -22,7 +24,7 @@ inline void resizeImg(const cv::Mat &img, cv::Mat &dst, int w, int h)
 }
 
 
-GrabberVisualizer::GrabberVisualizer(FrameQueue &q, const CancellationToken &cancellationToken)
+GrabberVisualizer::GrabberVisualizer(FrameQueue &q, CancellationToken &cancellationToken)
     : FrameConsumer(q, cancellationToken)
 {
     TLOG(INFO);
@@ -62,5 +64,10 @@ void GrabberVisualizer::process(std::shared_ptr<Frame> &frame)
     }
 
     cv::imshow(windowName, colorWithDepth);
-    cv::waitKey(15);
+    const auto key = cv::waitKey(15);
+    if (key == ' ' || key == escape)
+    {
+        TLOG(INFO) << "Exiting...";
+        cancel.trigger();
+    }
 }
