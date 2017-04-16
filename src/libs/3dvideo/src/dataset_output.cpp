@@ -16,11 +16,11 @@ Status DatasetOutput::writeHeader()
 
     writeField(Field::VERSION, Format::CURRENT_VERSION);
 
-    const uint32_t metadataSize = uint32_t(Format::METADATA_SIZE);
-    writeField(Field::METADATA_SIZE, metadataSize);
-    // METADATA_SIZE bytes reserved for metadata
-    std::vector<uchar> metadataBuff(metadataSize, 0);
-    writeField(Field::METADATA_SECTION, (char *)metadataBuff.data(), metadataBuff.size());
+    binWrite(Field::METADATA_SECTION);
+
+    // here goes dataset metadata
+
+    binWrite(Field::DATA_SECTION);
 
     return Status::SUCCESS;
 }
@@ -29,6 +29,9 @@ Status DatasetOutput::writeFrame(const Frame &frame)
 {
     binWrite(Field::FRAME_SECTION);
     writeField(Field::FRAME_NUMBER, frame.frameNumber);
+
+    writeField(Field::COLOR, frame.color.data, frame.color.total());
+    writeField(Field::DEPTH, frame.depth.data, frame.depth.total());
 
     return Status::SUCCESS;
 }
