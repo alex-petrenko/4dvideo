@@ -4,6 +4,7 @@
 
 #include <util/tiny_logger.hpp>
 
+#include <3dvideo/dataset_writer.hpp>
 #include <3dvideo/grabber_visualizer.hpp>
 
 #include <realsense/realsense_grabber.hpp>
@@ -25,7 +26,7 @@ int main()
 
     std::thread writerThread([&]()
     {
-        Consumer<FrameQueue> writer(writerQueue, cancellationToken);
+        DatasetWriter writer(writerQueue, cancellationToken);
         writer.run();
     });
 

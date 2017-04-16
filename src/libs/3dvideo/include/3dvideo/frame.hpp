@@ -11,10 +11,11 @@
 class Frame
 {
 public:
-    Frame(const cv::Mat &color, const cv::Mat &depth);
+    Frame(int idx, const cv::Mat &color, const cv::Mat &depth);
     ~Frame();
 
 public:
+    int frameNumber = 0;
     cv::Mat color, depth;
 };
 

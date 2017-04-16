@@ -160,7 +160,7 @@ void RealsenseGrabber::run()
 
         senseManager->ReleaseFrame();
 
-        std::shared_ptr<Frame> frame = std::make_shared<Frame>(colorMat, depthMat);
+        std::shared_ptr<Frame> frame = std::make_shared<Frame>(numFrames, colorMat, depthMat);
 
         for (auto queue : queues)
             queue->put(std::shared_ptr<Frame>(frame));
