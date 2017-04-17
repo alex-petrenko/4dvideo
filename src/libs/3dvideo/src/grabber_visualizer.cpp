@@ -3,6 +3,7 @@
 
 #include <util/tiny_logger.hpp>
 
+#include <3dvideo/app_state.hpp>
 #include <3dvideo/grabber_visualizer.hpp>
 
 
@@ -21,6 +22,24 @@ inline void resizeImg(const cv::Mat &img, cv::Mat &dst, int w, int h)
         dst = img;
 }
 
+void handleEvents(CancellationToken &cancel)
+{
+    const auto key = cv::waitKey(5);
+    if (key == ' ')
+    {
+        if (!appState().isGrabbingStarted())
+            appState().startGrabbing();
+        else
+            appState().stopGrabbing();
+    }
+    else if (key == escape)
+    {
+        TLOG(INFO) << "Exiting...";
+        appState().stopGrabbing();
+        cancel.trigger();
+    }
+}
+
 }
 
 
@@ -28,11 +47,23 @@ GrabberVisualizer::GrabberVisualizer(FrameQueue &q, CancellationToken &cancellat
     : FrameConsumer(q, cancellationToken)
 {
     TLOG(INFO);
+    cv::namedWindow(windowName);
 }
 
 GrabberVisualizer::~GrabberVisualizer()
 {
     TLOG(INFO);
+    cv::destroyAllWindows();
+}
+
+/// Visualizer uses OpenCV UI and thus requires this overload to be able to handle GUI events.
+void GrabberVisualizer::run()
+{
+    while (!cancel)
+    {
+        handleEvents(cancel);
+        loopBody();
+    }
 }
 
 void GrabberVisualizer::process(std::shared_ptr<Frame> &frame)
@@ -64,10 +95,4 @@ void GrabberVisualizer::process(std::shared_ptr<Frame> &frame)
     }
 
     cv::imshow(windowName, colorWithDepth);
-    const auto key = cv::waitKey(15);
-    if (key == ' ' || key == escape)
-    {
-        TLOG(INFO) << "Exiting...";
-        cancel.trigger();
-    }
 }

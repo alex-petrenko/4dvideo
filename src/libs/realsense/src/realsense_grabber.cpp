@@ -9,12 +9,15 @@
 #pragma warning(pop)
 #endif
 
+#include <util/tiny_logger.hpp>
+
 #include <realsense/realsense_grabber.hpp>
 
-#include <util/tiny_logger.hpp>
+#include <3dvideo/app_state.hpp>
 
 
 using namespace Intel;
+using namespace std::chrono_literals;
 
 
 struct RealsenseGrabber::RealsenseGrabberImpl
@@ -102,12 +105,15 @@ void RealsenseGrabber::init()
 
 void RealsenseGrabber::run()
 {
+    while (!appState().isGrabbingStarted())
+        std::this_thread::sleep_for(30ms);
+
     auto senseManager = data->senseManager;
 
     int numFrames = 0;
 
     RealSense::Status status = PXC_STATUS_NO_ERROR;
-    while (!cancel)
+    while (!cancel && !appState().isGrabbingStopped())
     {
         status = senseManager->AcquireFrame(true, 1000);
         if (status < PXC_STATUS_NO_ERROR)

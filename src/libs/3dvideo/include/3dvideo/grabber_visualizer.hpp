@@ -13,6 +13,8 @@ public:
     GrabberVisualizer(FrameQueue &q, CancellationToken &cancellationToken);
     virtual ~GrabberVisualizer();
 
+    virtual void run();
+
 private:
     virtual void process(std::shared_ptr<Frame> &frame);
 

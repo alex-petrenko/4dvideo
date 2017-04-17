@@ -30,11 +30,9 @@ private:
         binWrite(value);
     }
 
-    /// T is expected to be either char or uchar or uint8_t, etc. (helps to reduce amount of boilerplate casts)
     template<typename T>
     void writeField(Field field, const T *data, size_t size)
     {
-        static_assert(sizeof(T) == 1, "1-byte type expected");
         binWrite(field);
         out.write((char *)data, size);
     }

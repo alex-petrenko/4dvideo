@@ -18,17 +18,21 @@ public:
 
     virtual ~Consumer() = default;
 
-    void run()
+    virtual void run()
     {
         while (!cancel)
-        {
-            Item item;
-            const bool hasItem = q.pop(item, timeoutMs);
-            if (!hasItem)
-                continue;  // timed out
+            loopBody();
+    }
 
-            process(item);
-        }
+protected:
+    void loopBody()
+    {
+        Item item;
+        const bool hasItem = q.pop(item, timeoutMs);
+        if (!hasItem)
+            return;  // timed out
+
+        process(item);
     }
 
 private:
@@ -37,12 +41,9 @@ private:
     }
 
 protected:
-    CancellationToken &cancel;
-
-private:
     static constexpr int defaultTimeoutMs = 100;
-
     int timeoutMs = defaultTimeoutMs;
 
     QueueType &q;
+    CancellationToken &cancel;
 };
