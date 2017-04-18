@@ -10,6 +10,8 @@ public:
     DatasetWriter(FrameQueue &q, CancellationToken &cancel);
     virtual ~DatasetWriter();
 
+    virtual void run();
+
 private:
     virtual void process(std::shared_ptr<Frame> &frame);
 

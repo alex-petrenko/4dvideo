@@ -68,8 +68,6 @@ void GrabberVisualizer::run()
 
 void GrabberVisualizer::process(std::shared_ptr<Frame> &frame)
 {
-    TLOG(INFO);
-
     const int w = std::min(frame->color.cols, frame->depth.cols), h = std::min(frame->color.rows, frame->depth.rows);
     cv::Mat color, depth, colorWithDepth(h, w, CV_8UC3);
     resizeImg(frame->color, color, w, h);

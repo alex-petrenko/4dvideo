@@ -4,6 +4,12 @@
 class CameraParams
 {
 public:
+    CameraParams()
+    {
+        f = cx = cy = 0.0f;
+        w = h = 0;
+    }
+
     CameraParams(float f, float cx, float cy, int w, int h)
         : f(f)
         , cx(cx)

@@ -30,14 +30,11 @@ int main()
         writer.run();
     });
 
-    std::thread visualizerThread([&]()
-    {
-        GrabberVisualizer visualizer(visualizerQueue, cancellationToken);
-        visualizer.run();
-    });
+    // visualizer works with OpenCV GUI, so it's better to keep it on main thread
+    GrabberVisualizer visualizer(visualizerQueue, cancellationToken);
+    visualizer.run();
 
     writerThread.join();
-    visualizerThread.join();
     grabberThread.join();
 
     return EXIT_SUCCESS;

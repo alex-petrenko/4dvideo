@@ -5,8 +5,8 @@
 
 AppState & AppState::instance()
 {
-    static AppState instance;
-    return instance;
+    static AppState state;
+    return state;
 }
 
 void AppState::startGrabbing()
@@ -29,6 +29,12 @@ void AppState::stopGrabbing()
 bool AppState::isGrabbingStopped()
 {
     return stop.load();
+}
+
+void AppState::initializeSensorManager(const CameraParams &color, const CameraParams &depth)
+{
+    TLOG(INFO);
+    sensorManager.initialize(color, depth);
 }
 
 AppState & appState()

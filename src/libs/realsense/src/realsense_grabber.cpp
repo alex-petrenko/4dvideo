@@ -9,6 +9,7 @@
 #pragma warning(pop)
 #endif
 
+#include <util/camera.hpp>
 #include <util/tiny_logger.hpp>
 
 #include <realsense/realsense_grabber.hpp>
@@ -18,6 +19,17 @@
 
 using namespace Intel;
 using namespace std::chrono_literals;
+
+
+namespace
+{
+
+// constants
+constexpr int colorW = 1920, colorH = 1080;
+constexpr int depthW = 480, depthH = 360;
+constexpr int fps = 30;
+
+}
 
 
 struct RealsenseGrabber::RealsenseGrabberImpl
@@ -85,8 +97,8 @@ void RealsenseGrabber::init()
     }
 
     TLOG(INFO) << "Enabling streams...";
-    senseManager->EnableStream(RealSense::StreamType::STREAM_TYPE_COLOR, 1920, 1080, 30, PXCCapture::Device::STREAM_OPTION_STRONG_STREAM_SYNC);
-    senseManager->EnableStream(RealSense::StreamType::STREAM_TYPE_DEPTH, 480, 360, 30);  // also supports 628x468
+    senseManager->EnableStream(RealSense::StreamType::STREAM_TYPE_COLOR, colorW, colorH, float(fps), PXCCapture::Device::STREAM_OPTION_STRONG_STREAM_SYNC);
+    senseManager->EnableStream(RealSense::StreamType::STREAM_TYPE_DEPTH, depthW, depthH, float(fps));  // also supports 628x468
 
     senseManager->Init();
 
@@ -101,11 +113,20 @@ void RealsenseGrabber::init()
     device->SetColorAutoExposure(true);
     device->SetColorAutoWhiteBalance(true);
     device->SetDSLeftRightAutoExposure(true);
+
+    const auto colorF = device->QueryColorFocalLength().x;  // assuming fx and fy are roughly the same
+    const auto colorCenter = device->QueryColorPrincipalPoint();
+    const auto depthF = device->QueryDepthFocalLength().x;
+    const auto depthCenter = device->QueryDepthPrincipalPoint();
+
+    CameraParams colorCamera(colorF, colorCenter.x, colorCenter.y, colorW, colorH);
+    CameraParams depthCamera(depthF, depthCenter.x, depthCenter.y, depthW, depthH);
+    appState().initializeSensorManager(colorCamera, depthCamera);
 }
 
 void RealsenseGrabber::run()
 {
-    while (!appState().isGrabbingStarted())
+    while (!cancel && !appState().isGrabbingStarted())
         std::this_thread::sleep_for(30ms);
 
     auto senseManager = data->senseManager;

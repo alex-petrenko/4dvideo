@@ -2,6 +2,8 @@
 
 #include <atomic>
 
+#include <3dvideo/sensor_manager.hpp>
+
 
 class AppState
 {
@@ -14,6 +16,8 @@ public:
     void stopGrabbing();
     bool isGrabbingStopped();
 
+    void initializeSensorManager(const CameraParams &color, const CameraParams &depth);
+
 private:
     AppState() = default;
     AppState(const AppState &) = delete;
@@ -21,6 +25,8 @@ private:
 
 private:
     std::atomic_bool start = false, stop = false;
+
+    SensorManager sensorManager;
 };
 
 AppState & appState();
