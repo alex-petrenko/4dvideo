@@ -2,17 +2,27 @@
 
 #include <atomic>
 
+#include <3dvideo/format.hpp>
+
 #include <util/camera.hpp>
 
 
 class SensorManager
 {
 public:
-    void initialize(const CameraParams &colorCamera, const CameraParams &depthCamera);
+    void setInitialized();
     bool isInitialized() const;
+    
+    void setColorParams(const CameraParams &colorCamera, ColorDataFormat format);
+    void setDepthParams(const CameraParams &depthCamera, DepthDataFormat format);
+
+    void getColorParams(CameraParams &colorCamera, ColorDataFormat &format) const;
+    void getDepthParams(CameraParams &depthCamera, DepthDataFormat &format) const;
 
 private:
     std::atomic_bool initialized = false;
 
     CameraParams color, depth;
+    ColorDataFormat colorFormat;
+    DepthDataFormat depthFormat;
 };

@@ -24,7 +24,7 @@ inline void resizeImg(const cv::Mat &img, cv::Mat &dst, int w, int h)
 
 void handleEvents(CancellationToken &cancel)
 {
-    const auto key = cv::waitKey(5);
+    const auto key = cv::waitKey(10);
     if (key == ' ')
     {
         if (!appState().isGrabbingStarted())

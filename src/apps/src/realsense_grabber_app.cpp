@@ -27,6 +27,7 @@ int main()
     std::thread writerThread([&]()
     {
         DatasetWriter writer(writerQueue, cancellationToken);
+        writer.init();
         writer.run();
     });
 

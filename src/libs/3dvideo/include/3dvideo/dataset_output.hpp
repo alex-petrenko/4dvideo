@@ -6,6 +6,7 @@
 
 #include <3dvideo/frame.hpp>
 #include <3dvideo/format.hpp>
+#include <3dvideo/sensor_manager.hpp>
 
 
 class DatasetOutput
@@ -13,7 +14,7 @@ class DatasetOutput
 public:
     DatasetOutput(const std::string &path);
 
-    Status writeHeader();
+    Status writeHeader(const SensorManager &sensorManager);
     Status writeFrame(const Frame &frame);
 
 private:

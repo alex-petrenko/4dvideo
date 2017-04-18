@@ -16,7 +16,7 @@ public:
     void stopGrabbing();
     bool isGrabbingStopped();
 
-    void initializeSensorManager(const CameraParams &color, const CameraParams &depth);
+    SensorManager & getSensorManager();
 
 private:
     AppState() = default;

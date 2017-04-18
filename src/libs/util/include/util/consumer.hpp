@@ -18,6 +18,10 @@ public:
 
     virtual ~Consumer() = default;
 
+    virtual void init()
+    {
+    }
+
     virtual void run()
     {
         while (!cancel)

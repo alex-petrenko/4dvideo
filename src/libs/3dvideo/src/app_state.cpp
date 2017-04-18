@@ -31,10 +31,9 @@ bool AppState::isGrabbingStopped()
     return stop.load();
 }
 
-void AppState::initializeSensorManager(const CameraParams &color, const CameraParams &depth)
+SensorManager & AppState::getSensorManager()
 {
-    TLOG(INFO);
-    sensorManager.initialize(color, depth);
+    return sensorManager;
 }
 
 AppState & appState()

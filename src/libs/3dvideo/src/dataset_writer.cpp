@@ -1,4 +1,8 @@
+#include <3dvideo/app_state.hpp>
 #include <3dvideo/dataset_writer.hpp>
+
+
+using namespace std::chrono_literals;
 
 
 DatasetWriter::DatasetWriter(FrameQueue &q, CancellationToken &cancel)
@@ -11,13 +15,14 @@ DatasetWriter::~DatasetWriter()
 {
 }
 
-void DatasetWriter::run()
+void DatasetWriter::init()
 {
-    
+    const SensorManager &sensorManager = appState().getSensorManager();
 
-    dataset.writeHeader();
+    while (!cancel && !sensorManager.isInitialized())
+        std::this_thread::sleep_for(30ms);
 
-    FrameConsumer::run();
+    dataset.writeHeader(sensorManager);
 }
 
 void DatasetWriter::process(std::shared_ptr<Frame> &frame)

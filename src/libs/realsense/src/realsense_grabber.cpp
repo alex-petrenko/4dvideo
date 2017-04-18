@@ -121,7 +121,10 @@ void RealsenseGrabber::init()
 
     CameraParams colorCamera(colorF, colorCenter.x, colorCenter.y, colorW, colorH);
     CameraParams depthCamera(depthF, depthCenter.x, depthCenter.y, depthW, depthH);
-    appState().initializeSensorManager(colorCamera, depthCamera);
+    SensorManager &sensorManager = appState().getSensorManager();
+    sensorManager.setColorParams(colorCamera, ColorDataFormat::BGR);
+    sensorManager.setDepthParams(depthCamera, DepthDataFormat::UNSIGNED_16BIT_MM);
+    sensorManager.setInitialized();
 }
 
 void RealsenseGrabber::run()
