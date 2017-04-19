@@ -16,8 +16,3 @@ TEST(io3d, binaryPly)
     EXPECT_EQ(cloud.size(), 11973);
     EXPECT_EQ(colors.size(), 11973);
 }
-
-TEST(io3d, triangulation)
-{
-    //loadTriangulation()
-}

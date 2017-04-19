@@ -11,6 +11,9 @@
 #include <util/tiny_logger.hpp>
 
 
+cv::Mat triangImg;
+
+
 class Delaunay::DelaunayImpl
 {
     friend class Delaunay;
@@ -890,7 +893,7 @@ void Delaunay::DelaunayImpl::showTriangulation(cv::Mat &img, EdgeIdx le, EdgeIdx
 {
     plotTriangulation(img, le, re, base);
     cv::imshow("tri", img);
-    cv::waitKey();
+    cv::waitKey(1);
 }
 
 

@@ -7,7 +7,7 @@
 #include <3dvideo/frame.hpp>
 
 
-class RealsenseGrabber : public Producer<FrameQueue>
+class RealsenseGrabber : public FrameProducer
 {
     /// Private implementation to hide some realsense headers.
     struct RealsenseGrabberImpl;

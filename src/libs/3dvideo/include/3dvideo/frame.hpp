@@ -5,6 +5,7 @@
 #include <opencv2/core.hpp>
 
 #include <util/consumer.hpp>
+#include <util/producer.hpp>
 #include <util/concurrent_queue.hpp>
 
 
@@ -20,4 +21,5 @@ public:
 };
 
 typedef ConcurrentQueue<std::shared_ptr<Frame>> FrameQueue;
+typedef Producer<FrameQueue> FrameProducer;
 typedef Consumer<FrameQueue> FrameConsumer;
