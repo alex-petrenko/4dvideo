@@ -22,7 +22,7 @@ public:
     {
         for (int i = 0; i < 10000; ++i)
             for (auto q : queues)
-                q->put(std::move(i));  // :)
+                q->put(i);
     }
 };
 

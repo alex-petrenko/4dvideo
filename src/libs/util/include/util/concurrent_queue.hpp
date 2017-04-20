@@ -13,13 +13,18 @@ public:
     typedef typename T ElementType;
 
 public:
+    void put(T item)
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        q.push(item);
+        notify(lock);
+    }
+
     void put(T &&item)
     {
         std::unique_lock<std::mutex> lock(mutex);
         q.emplace(item);
-
-        lock.unlock();  // should unlock before notify, otherwise waiting thread will wake up only to block again
-        cv.notify_one();
+        notify(lock);
     }
 
     /// Returns false if there are no items in the queue after timeoutMs milliseconds.
@@ -41,6 +46,13 @@ public:
     {
         std::lock_guard<std::mutex> lock(mutex);
         return q.empty();
+    }
+
+private:
+    void notify(std::unique_lock<std::mutex> &lock)
+    {
+        lock.unlock();  // should unlock before notify, otherwise waiting thread will wake up only to block again
+        cv.notify_one();
     }
 
 private:

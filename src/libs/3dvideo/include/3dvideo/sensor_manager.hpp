@@ -10,7 +10,7 @@
 class SensorManager
 {
 public:
-    void setInitialized();
+    void setInitialized(bool initialized = true);
     bool isInitialized() const;
     
     void setColorParams(const CameraParams &colorCamera, ColorDataFormat format);
@@ -20,7 +20,7 @@ public:
     void getDepthParams(CameraParams &depthCamera, DepthDataFormat &format) const;
 
 private:
-    std::atomic_bool initialized = false;
+    std::atomic_bool initialized;
 
     CameraParams color, depth;
     ColorDataFormat colorFormat;

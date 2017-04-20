@@ -28,6 +28,13 @@ public:
     }
 
 protected:
+    virtual void produce(Item item)
+    {
+        for (auto queue : queues)
+            queue->put(item);
+    }
+
+protected:
     /// Multiple queues used to pass frames to different consumers.
     std::vector<QueueType *> queues;
     const CancellationToken &cancel;

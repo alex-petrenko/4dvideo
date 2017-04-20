@@ -5,9 +5,9 @@
 using namespace std::chrono_literals;
 
 
-DatasetWriter::DatasetWriter(FrameQueue &q, CancellationToken &cancel)
+DatasetWriter::DatasetWriter(const std::string &path, FrameQueue &q, CancellationToken &cancel)
     : Consumer(q, cancel)
-    , dataset(R"(C:\temp\tst\dataset.4dv)")
+    , dataset(path)
 {
 }
 

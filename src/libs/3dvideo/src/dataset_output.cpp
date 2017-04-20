@@ -24,21 +24,19 @@ Status DatasetOutput::writeHeader(const SensorManager &sensorManager)
     sensorManager.getDepthParams(depth, depthFormat);
 
     binWrite(Field::COLOR_RESOLUTION);
-    binWrite(color.w), binWrite(color.h);
+    binWrite(color.w, color.h);
 
     binWrite(Field::DEPTH_RESOLUTION);
-    binWrite(depth.w), binWrite(depth.h);
+    binWrite(depth.w, depth.h);
 
     binWrite(Field::COLOR_INTRINSICS);
-    binWrite(color.f), binWrite(color.cx), binWrite(color.cy);
+    binWrite(color.f, color.cx, color.cy);
 
     binWrite(Field::DEPTH_INTRINSICS);
-    binWrite(depth.f), binWrite(depth.cx), binWrite(depth.cy);
+    binWrite(depth.f, depth.cx, depth.cy);
 
     writeField(Field::COLOR_FORMAT, colorFormat);
     writeField(Field::DEPTH_FORMAT, depthFormat);
-
-    binWrite(Field::DATA_SECTION);
 
     return Status::SUCCESS;
 }
@@ -49,7 +47,9 @@ Status DatasetOutput::writeFrame(const Frame &frame)
     writeField(Field::FRAME_NUMBER, frame.frameNumber);
 
     writeField(Field::COLOR, frame.color.data, frame.color.total());
+    writeField(Field::COLOR_TIMESTAMP, frame.cTimestamp);
     writeField(Field::DEPTH, frame.depth.data, frame.depth.total());
+    writeField(Field::DEPTH_TIMESTAMP, frame.dTimestamp);
 
     return Status::SUCCESS;
 }

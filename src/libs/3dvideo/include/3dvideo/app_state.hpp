@@ -10,6 +10,8 @@ class AppState
 public:
     static AppState & instance();
 
+    void reset();
+
     void startGrabbing();
     bool isGrabbingStarted() const;
 

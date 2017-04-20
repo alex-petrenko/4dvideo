@@ -25,10 +25,9 @@ private:
     }
 
     template<typename T, typename... Args>
-    void binWrite(T val, Args... args)
+    void binWrite(T val, Args&&... args)
     {
-        binWrite(val);
-        binWrite(args...);
+        binWrite(val), binWrite(std::forward<Args>(args)...);
     }
 
     template<typename T>

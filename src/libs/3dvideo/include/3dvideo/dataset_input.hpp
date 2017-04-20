@@ -7,6 +7,7 @@
 #include <util/enum.hpp>
 #include <util/camera.hpp>
 
+#include <3dvideo/frame.hpp>
 #include <3dvideo/format.hpp>
 
 
@@ -21,12 +22,17 @@ struct DatasetMetadata
 class DatasetInput
 {
     typedef std::function<bool()> FieldParser;
+    typedef std::function<bool(Frame &)> FrameFieldParser;
 
 public:
     DatasetInput(const std::string &path);
 
     Status readHeader();
-    Status readFrame();
+    Status readFrame(Frame &frame);
+
+    DatasetMetadata getMetadata() const;
+
+    bool finished() const;
 
 private:
     template<typename T>
@@ -36,9 +42,9 @@ private:
     }
 
     template<typename T, typename... Args>
-    bool binRead(T &value, Args... args)
+    bool binRead(T &value, Args&&... args)
     {
-        return binRead(value) && binRead(args...);
+        return binRead(value) && binRead(std::forward<Args>(args)...);
     }
 
     template<typename T>
@@ -54,10 +60,13 @@ private:
     }
 
     bool readMetadataField(Field &field);
+    bool readFrameField(Frame &frame, Field &field);
 
 private:
+    bool isFinished = false;
     std::ifstream in;
     std::map<Field, FieldParser> metadataParsers;
+    std::map<Field, FrameFieldParser> frameParsers;
 
     DatasetMetadata meta;
 };

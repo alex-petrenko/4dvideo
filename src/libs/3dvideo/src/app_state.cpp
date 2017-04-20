@@ -9,6 +9,13 @@ AppState & AppState::instance()
     return state;
 }
 
+void AppState::reset()
+{
+    TLOG(INFO);
+    start = stop = false;
+    sensorManager.setInitialized(false);
+}
+
 void AppState::startGrabbing()
 {
     TLOG(INFO);

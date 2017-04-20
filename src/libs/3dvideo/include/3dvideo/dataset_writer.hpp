@@ -7,7 +7,7 @@
 class DatasetWriter : public FrameConsumer
 {
 public:
-    DatasetWriter(FrameQueue &q, CancellationToken &cancel);
+    DatasetWriter(const std::string &path, FrameQueue &q, CancellationToken &cancel);
     virtual ~DatasetWriter();
 
     virtual void init();

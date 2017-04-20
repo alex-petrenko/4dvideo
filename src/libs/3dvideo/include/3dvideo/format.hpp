@@ -9,8 +9,7 @@ enum class Field : uint16_t
     MAGIC = 0x3D4D,
     VERSION = 0x0010,
     METADATA_SECTION = 0x0020,
-    DATA_SECTION = 0x0030,
-    FRAME_SECTION = 0x0040,
+    FRAME_SECTION = 0x0030,
 
     // camera, sensor and data format properties, usually same for all dataset frames
     COLOR_RESOLUTION = 0x0100,
@@ -24,7 +23,9 @@ enum class Field : uint16_t
     // frame data
     FRAME_NUMBER = 0x0f00,
     COLOR = 0x0f10,
+    COLOR_TIMESTAMP = 0x0f11,
     DEPTH = 0x0f20,
+    DEPTH_TIMESTAMP = 0x0f21,
 };
 
 constexpr uint32_t FORMAT_VERSION = 1;

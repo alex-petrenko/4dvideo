@@ -15,5 +15,6 @@ public:
     virtual void run();
 
 private:
+    bool initialized = false;
     DatasetInput dataset;
 };

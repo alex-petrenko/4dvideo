@@ -24,19 +24,21 @@ public:
 
     virtual void run()
     {
-        while (!cancel)
-            loopBody();
+        bool hasItems = false;
+        while (hasItems || !cancel)
+            hasItems = loopBody();
     }
 
 protected:
-    void loopBody()
+    bool loopBody()
     {
         Item item;
         const bool hasItem = q.pop(item, timeoutMs);
         if (!hasItem)
-            return;  // timed out
+            return false;  // timed out
 
         process(item);
+        return true;
     }
 
 private:

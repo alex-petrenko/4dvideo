@@ -164,6 +164,7 @@ void RealsenseGrabber::run()
         }
 
         const auto colorInfo = color->QueryInfo(), depthInfo = depth->QueryInfo();
+        const auto colorTimestamp = color->QueryTimeStamp(), depthTimestamp = depth->QueryTimeStamp();
         ++numFrames;
         TLOG(INFO) << "Captured color frame #" << numFrames << " " << colorInfo.format << " " << colorInfo.width << " " << colorInfo.height << " " << colorInfo.reserved;
         TLOG(INFO) << "Captured depth frame #" << numFrames << " " << depthInfo.format << " " << depthInfo.width << " " << depthInfo.height << " " << depthInfo.reserved;
@@ -189,11 +190,7 @@ void RealsenseGrabber::run()
         depth->ReleaseAccess(&depthData);
 
         senseManager->ReleaseFrame();
-
-        std::shared_ptr<Frame> frame = std::make_shared<Frame>(numFrames, colorMat, depthMat);
-
-        for (auto queue : queues)
-            queue->put(std::shared_ptr<Frame>(frame));
+        produce(std::make_shared<Frame>(numFrames, colorMat, colorTimestamp, depthMat, depthTimestamp));
     }
 
     TLOG(INFO) << "Grabbing thread has finished, last status: " << status;

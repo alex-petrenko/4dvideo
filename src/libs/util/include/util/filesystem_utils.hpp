@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <vector>
+#include <fstream>
 #include <sstream>
 
 
@@ -33,3 +35,6 @@ std::string pathJoin(Args... args)
     pathJoinHelper(stream, std::forward<Args>(args)...);
     return stream.str();
 }
+
+/// Returns number of bytes read.
+size_t readAllBytes(std::ifstream &stream, std::vector<char> &buffer);

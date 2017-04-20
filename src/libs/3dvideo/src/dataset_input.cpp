@@ -6,20 +6,33 @@
 DatasetInput::DatasetInput(const std::string &path)
     : in(path, std::ios::binary)
 {
-    // populating metadata parsers
+    // metadata parsers
     auto &mp = metadataParsers;
     mp[Field::VERSION] = [&] { return binRead(meta.formatVersion); };
-
+    mp[Field::FRAME_SECTION] = [&] { return true; };
     mp[Field::COLOR_RESOLUTION] = [&] { return binRead(meta.color.w, meta.color.h); };
     mp[Field::DEPTH_RESOLUTION] = [&] { return binRead(meta.depth.w, meta.depth.h); };
-
     mp[Field::COLOR_INTRINSICS] = [&] { return binRead(meta.color.f, meta.color.cx, meta.color.cy); };
     mp[Field::DEPTH_INTRINSICS] = [&] { return binRead(meta.depth.f, meta.depth.cx, meta.depth.cy); };
-
     mp[Field::COLOR_FORMAT] = [&] { return binRead(meta.colorFormat); };
     mp[Field::DEPTH_FORMAT] = [&] { return binRead(meta.depthFormat); };
 
-    mp[Field::DATA_SECTION] = [&] { return true; };
+    // frame parsers
+    auto &fp = frameParsers;
+    fp[Field::FRAME_NUMBER] = [&](Frame &f) { return binRead(f.frameNumber); };
+    fp[Field::FRAME_SECTION] = [&](Frame &) { return true; };
+    fp[Field::COLOR_TIMESTAMP] = [&](Frame &f) { return binRead(f.cTimestamp); };
+    fp[Field::DEPTH_TIMESTAMP] = [&](Frame &f) { return binRead(f.dTimestamp); };
+    fp[Field::COLOR] = [&](Frame &f)
+    {
+        f.color = cv::Mat(meta.color.h, meta.color.w, CV_8UC3);
+        return bool(in.read((char *)f.color.data, f.color.total()));
+    };
+    fp[Field::DEPTH] = [&](Frame &f)
+    {
+        f.depth = cv::Mat(meta.depth.h, meta.depth.w, CV_16UC1);
+        return bool(in.read((char *)f.depth.data, f.depth.total()));
+    };
 }
 
 Status DatasetInput::readHeader()
@@ -42,7 +55,7 @@ Status DatasetInput::readHeader()
         return Status::ERROR;
     }
 
-    while (ok && field != Field::DATA_SECTION)
+    while (ok && field != Field::FRAME_SECTION)
         ok = readMetadataField(field);
 
     if (!ok)
@@ -76,9 +89,59 @@ bool DatasetInput::readMetadataField(Field &field)
     return parser();
 }
 
-Status DatasetInput::readFrame()
+Status DatasetInput::readFrame(Frame &frame)
 {
+    Field field;
+    bool ok;
+    do {
+        ok = readFrameField(frame, field);
+    } while (ok && field != Field::FRAME_SECTION);
+
+    if (in.eof())
+    {
+        TLOG(INFO) << "Finished reading dataset!";
+        isFinished = true;
+        return Status::SUCCESS;
+    }
+
+    if (!ok)
+    {
+        TLOG(ERROR) << "Error while reading frame!";
+        isFinished = true;
+        return Status::ERROR;
+    }
+
     return Status::SUCCESS;
+}
+
+bool DatasetInput::readFrameField(Frame &frame, Field &field)
+{
+    const auto ok = binRead(field);
+    if (!ok)
+    {
+        TLOG(WARNING) << "Could not find the next frame field";
+        return false;
+    }
+
+    const auto it = frameParsers.find(field);
+    if (it == frameParsers.end())
+    {
+        TLOG(ERROR) << "Could not find parser for frame field " << int(field);
+        return false;
+    }
+
+    const auto &parser = it->second;
+    return parser(frame);
+}
+
+DatasetMetadata DatasetInput::getMetadata() const
+{
+    return meta;
+}
+
+bool DatasetInput::finished() const
+{
+    return isFinished;
 }
 
 

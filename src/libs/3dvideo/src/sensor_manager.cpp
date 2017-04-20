@@ -13,9 +13,9 @@ void SensorManager::setDepthParams(const CameraParams & depthCamera, DepthDataFo
     depthFormat = format;
 }
 
-void SensorManager::setInitialized()
+void SensorManager::setInitialized(bool value)
 {
-    initialized = true;
+    initialized = value;
 }
 
 bool SensorManager::isInitialized() const
