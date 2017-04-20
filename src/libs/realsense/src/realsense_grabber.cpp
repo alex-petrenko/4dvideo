@@ -41,7 +41,7 @@ struct RealsenseGrabber::RealsenseGrabberImpl
 RealsenseGrabber::RealsenseGrabber(const CancellationToken &cancellationToken)
     : Producer(cancellationToken)
 {
-    data.reset(new RealsenseGrabberImpl);
+    data = std::make_unique<RealsenseGrabberImpl>();
 }
 
 RealsenseGrabber::~RealsenseGrabber()

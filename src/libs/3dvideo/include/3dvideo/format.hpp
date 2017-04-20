@@ -27,10 +27,7 @@ enum class Field : uint16_t
     DEPTH = 0x0f20,
 };
 
-enum class Format : uint32_t
-{
-    CURRENT_VERSION = 1,
-};
+constexpr uint32_t FORMAT_VERSION = 1;
 
 enum class ColorDataFormat : uint8_t
 {

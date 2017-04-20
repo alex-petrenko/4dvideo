@@ -24,6 +24,13 @@ private:
         out.write((char *)&val, sizeof(val));
     }
 
+    template<typename T, typename... Args>
+    void binWrite(T val, Args... args)
+    {
+        binWrite(val);
+        binWrite(args...);
+    }
+
     template<typename T>
     void writeField(Field field, T value)
     {

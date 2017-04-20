@@ -13,10 +13,9 @@ Status DatasetOutput::writeHeader(const SensorManager &sensorManager)
         return Status::ERROR;
 
     binWrite(Field::MAGIC);
-
-    writeField(Field::VERSION, Format::CURRENT_VERSION);
-
     binWrite(Field::METADATA_SECTION);
+
+    writeField(Field::VERSION, FORMAT_VERSION);
 
     CameraParams color, depth;
     ColorDataFormat colorFormat;
@@ -25,10 +24,10 @@ Status DatasetOutput::writeHeader(const SensorManager &sensorManager)
     sensorManager.getDepthParams(depth, depthFormat);
 
     binWrite(Field::COLOR_RESOLUTION);
-    binWrite(uint32_t(color.w)), binWrite(uint32_t(color.h));
+    binWrite(color.w), binWrite(color.h);
 
     binWrite(Field::DEPTH_RESOLUTION);
-    binWrite(uint32_t(depth.w)), binWrite(uint32_t(depth.h));
+    binWrite(depth.w), binWrite(depth.h);
 
     binWrite(Field::COLOR_INTRINSICS);
     binWrite(color.f), binWrite(color.cx), binWrite(color.cy);
