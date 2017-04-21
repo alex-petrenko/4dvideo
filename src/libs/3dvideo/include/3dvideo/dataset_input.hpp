@@ -67,6 +67,7 @@ private:
     std::ifstream in;
     std::map<Field, FieldParser> metadataParsers;
     std::map<Field, FrameFieldParser> frameParsers;
+    std::map<ColorDataFormat, FrameFieldParser> colorReaders;
 
     DatasetMetadata meta;
 };

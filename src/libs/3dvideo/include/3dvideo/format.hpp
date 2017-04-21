@@ -33,6 +33,7 @@ constexpr uint32_t FORMAT_VERSION = 1;
 enum class ColorDataFormat : uint8_t
 {
     BGR = 0x10,
+    YUV_NV21 = 0x20,  // Tango
 };
 
 enum class DepthDataFormat : uint8_t

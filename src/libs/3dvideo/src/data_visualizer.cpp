@@ -4,7 +4,7 @@
 #include <util/tiny_logger.hpp>
 
 #include <3dvideo/app_state.hpp>
-#include <3dvideo/grabber_visualizer.hpp>
+#include <3dvideo/data_visualizer.hpp>
 
 
 namespace
@@ -24,7 +24,7 @@ inline void resizeImg(const cv::Mat &img, cv::Mat &dst, int w, int h)
 
 void handleEvents(CancellationToken &cancel)
 {
-    const auto key = cv::waitKey(10);
+    const auto key = cv::waitKey(200);
     if (key == ' ')
     {
         if (!appState().isGrabbingStarted())
@@ -43,21 +43,21 @@ void handleEvents(CancellationToken &cancel)
 }
 
 
-GrabberVisualizer::GrabberVisualizer(FrameQueue &q, CancellationToken &cancellationToken)
+DataVisualizer::DataVisualizer(FrameQueue &q, CancellationToken &cancellationToken)
     : FrameConsumer(q, cancellationToken)
 {
     TLOG(INFO);
     cv::namedWindow(windowName);
 }
 
-GrabberVisualizer::~GrabberVisualizer()
+DataVisualizer::~DataVisualizer()
 {
     TLOG(INFO);
     cv::destroyAllWindows();
 }
 
 /// Visualizer uses OpenCV UI and thus requires this overload to be able to handle GUI events.
-void GrabberVisualizer::run()
+void DataVisualizer::run()
 {
     while (!cancel)
     {
@@ -66,7 +66,7 @@ void GrabberVisualizer::run()
     }
 }
 
-void GrabberVisualizer::process(std::shared_ptr<Frame> &frame)
+void DataVisualizer::process(std::shared_ptr<Frame> &frame)
 {
     const int w = std::min(frame->color.cols, frame->depth.cols), h = std::min(frame->color.rows, frame->depth.rows);
     cv::Mat color, depth, colorWithDepth(h, w, CV_8UC3);

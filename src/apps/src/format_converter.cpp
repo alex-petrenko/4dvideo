@@ -6,7 +6,12 @@
 #include <opencv2/imgproc.hpp>
 
 #include <util/util.hpp>
+#include <util/geometry.hpp>
 #include <util/tiny_logger.hpp>
+
+#include <3dvideo/frame.hpp>
+#include <3dvideo/app_state.hpp>
+#include <3dvideo/dataset_writer.hpp>
 
 
 struct TangoPoint
@@ -16,21 +21,16 @@ struct TangoPoint
 
 TangoPoint tangoPoints[100000];
 
-struct Frame
+struct TangoFrame
 {
     std::vector<cv::Point3f> frameCloud;
     double timestamp;
 };
-std::vector<Frame> frames;
+std::vector<TangoFrame> frames;
 
 float extrRotation[4];
 float extrTranslation[3];
 
-
-void writeHeader(const std::ofstream &output)
-{
-    TLOG(INFO) << "Writing file header";
-}
 
 int main(int argc, char *argv[])
 {
@@ -41,27 +41,48 @@ int main(int argc, char *argv[])
     int arg = 1;
     const std::string datasetPath(argv[arg++]), outputPath(argv[arg++]);
 
-    std::ifstream input(datasetPath, std::ios::binary);
-    std::ofstream output(outputPath, std::ios::binary);
-    
-    writeHeader(output);
+    CancellationToken cancellationToken;
+    FrameQueue frameQueue;
 
-    cv::Mat imageBgr(720, 1080, CV_8UC3);
-    cv::Mat image(3 * 720 / 2, 1280, CV_8UC1);
+    std::thread writerThread([&]
+    {
+        DatasetWriter writer(R"(C:\temp\tst\converted.4dv)", frameQueue, cancellationToken);
+        writer.init();
+        writer.run();
+    });
+
+    auto &sensorManager = appState().getSensorManager();
+    CameraParams colorCam;
+    colorCam.w = 1280, colorCam.h = 720;
+    sensorManager.setColorParams(colorCam, ColorDataFormat::YUV_NV21);
+
+    CameraParams depthCam(520.9651f, 319.223f, 175.641f, 640, 360);
+    sensorManager.setDepthParams(depthCam, DepthDataFormat::UNSIGNED_16BIT_MM);
+
+    sensorManager.setInitialized();
+
+    std::ifstream input(datasetPath, std::ios::binary);
+    cv::Mat imageBgr(720, 1280, CV_8UC3);
 
     int numFrames = 0;
     while (input)
     {
+        auto frame = std::make_shared<Frame>();
+
         double timestamp;
         input.read((char *)&timestamp, sizeof(timestamp));
         endianSwap(&timestamp);
-        input.read((char *)image.data, image.total());
+        frame->cTimestamp = int64_t(timestamp);
+
+        frame->color = cv::Mat(3 * colorCam.h / 2, colorCam.w, CV_8UC1);
+        input.read((char *)frame->color.data, frame->color.total());
         // cv::cvtColor(image, imageBgr, cv::COLOR_YUV2BGR_NV21);
 
         if (!input) break;
         double pointCloudTimestamp;
         input.read((char *)&pointCloudTimestamp, sizeof(pointCloudTimestamp));
         endianSwap(&pointCloudTimestamp);
+        frame->dTimestamp = int64_t(pointCloudTimestamp);
 
         if (!input) break;
         int numPoints;
@@ -80,17 +101,23 @@ int main(int argc, char *argv[])
             if (!input) break;
             input.read((char *)tangoPoints, numPointBytes);
 
-            frames.emplace_back();
-            Frame &currentFrame = frames.back();
-            currentFrame.timestamp = pointCloudTimestamp;
-            currentFrame.frameCloud.resize(numPoints);
+            frame->depth = cv::Mat(depthCam.h, depthCam.w, CV_16UC1);
+
+            int iImg, jImg;
+            uint16_t depth;
             for (int i = 0; i < numPoints; ++i)
             {
                 endianSwap(&tangoPoints[i].x);
                 endianSwap(&tangoPoints[i].y);
                 endianSwap(&tangoPoints[i].z);
-                currentFrame.frameCloud[i] = cv::Point3f(tangoPoints[i].x, tangoPoints[i].y, tangoPoints[i].z);
+
+                const auto p = cv::Point3f(tangoPoints[i].x, tangoPoints[i].y, tangoPoints[i].z);
+                if (project3dPointTo2d(p, depthCam.f, depthCam.cx, depthCam.cy, depthCam.w, depthCam.h, iImg, jImg, depth))
+                    frame->depth.at<uint16_t>(iImg, jImg) = depth;
             }
+
+            frame->frameNumber = numFrames;
+            frameQueue.put(frame);
         }
 
         if (!input) break;
@@ -106,6 +133,9 @@ int main(int argc, char *argv[])
         ++numFrames;
         TLOG(INFO) << "num frames: " << numFrames;
     }
+
+    cancellationToken.trigger();
+    writerThread.join();
 
     return EXIT_SUCCESS;
 }
