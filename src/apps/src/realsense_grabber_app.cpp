@@ -13,7 +13,7 @@ int main()
     CancellationToken cancellationToken;
     FrameQueue writerQueue, visualizerQueue;
 
-    std::thread grabberThread([&]()
+    std::thread grabberThread([&]
     {
         RealsenseGrabber grabber(cancellationToken);
         grabber.addQueue(&writerQueue);
@@ -32,7 +32,7 @@ int main()
     // visualizer works with OpenCV GUI, so it's better to keep it on main thread
     DataVisualizer visualizer(visualizerQueue, cancellationToken);
     visualizer.run();
-
+    
     writerThread.join();
     grabberThread.join();
 

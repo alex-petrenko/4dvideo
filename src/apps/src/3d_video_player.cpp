@@ -429,9 +429,9 @@ float extrTranslation[3];
 
 void readDataset(const std::string &datasetPath)
 {
-    //std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\dataset2.bin)", std::ios::binary);
+    std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\special_datasets\001_first_kitchen.bin)", std::ios::binary);
     //std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\special_datasets\002_yoga_wall.bin)", std::ios::binary);
-    std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\special_datasets\003_push_ups.bin)", std::ios::binary);
+    //std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\special_datasets\003_push_ups.bin)", std::ios::binary);
     //std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\1487499749_dataset.bin)", std::ios::binary);
 
     cv::Mat imageBgr(720, 1080, CV_8UC3);
@@ -443,7 +443,7 @@ void readDataset(const std::string &datasetPath)
         double timestamp;
         dataset.read((char *)&timestamp, sizeof(timestamp));
         endianSwap(&timestamp);
-        dataset.read((char *)image.data, image.total());
+        dataset.read((char *)image.data, image.total() * image.elemSize());
         // cv::cvtColor(image, imageBgr, cv::COLOR_YUV2BGR_NV21);
 
         if (!dataset) break;

@@ -11,3 +11,7 @@ target_link_libraries(realsense_grabber_app util realsense ${OpenCV_LIBS})
 
 add_app_default(dataset_visualizer_app src/dataset_visualizer_app.cpp)
 target_link_libraries(dataset_visualizer_app 3dvideo ${OpenCV_LIBS})
+
+# TODO REMOVE
+add_app_default(_test_app src/_test_app.cpp)
+target_link_libraries(_test_app 3dvideo ${OpenCV_LIBS})

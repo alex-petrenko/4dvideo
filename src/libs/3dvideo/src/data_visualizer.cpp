@@ -69,7 +69,7 @@ void DataVisualizer::run()
 void DataVisualizer::process(std::shared_ptr<Frame> &frame)
 {
     const int w = std::min(frame->color.cols, frame->depth.cols), h = std::min(frame->color.rows, frame->depth.rows);
-    cv::Mat color, depth, colorWithDepth(h, w, CV_8UC3);
+    cv::Mat color, depth, colorWithDepth = cv::Mat::zeros(h, w, CV_8UC3);
     resizeImg(frame->color, color, w, h);
     resizeImg(frame->depth, depth, w, h);
 
@@ -92,5 +92,5 @@ void DataVisualizer::process(std::shared_ptr<Frame> &frame)
         }
     }
 
-    cv::imshow(windowName, colorWithDepth);
+    cv::imshow(windowName, frame->color);
 }

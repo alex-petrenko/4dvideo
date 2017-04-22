@@ -21,13 +21,6 @@ struct TangoPoint
 
 TangoPoint tangoPoints[100000];
 
-struct TangoFrame
-{
-    std::vector<cv::Point3f> frameCloud;
-    double timestamp;
-};
-std::vector<TangoFrame> frames;
-
 float extrRotation[4];
 float extrTranslation[3];
 
@@ -75,7 +68,7 @@ int main(int argc, char *argv[])
         frame->cTimestamp = int64_t(timestamp);
 
         frame->color = cv::Mat(3 * colorCam.h / 2, colorCam.w, CV_8UC1);
-        input.read((char *)frame->color.data, frame->color.total());
+        input.read((char *)frame->color.data, frame->color.total() * frame->color.elemSize());
         // cv::cvtColor(image, imageBgr, cv::COLOR_YUV2BGR_NV21);
 
         if (!input) break;
@@ -101,8 +94,7 @@ int main(int argc, char *argv[])
             if (!input) break;
             input.read((char *)tangoPoints, numPointBytes);
 
-            frame->depth = cv::Mat(depthCam.h, depthCam.w, CV_16UC1);
-
+            frame->depth = cv::Mat::zeros(depthCam.h, depthCam.w, CV_16UC1);
             int iImg, jImg;
             uint16_t depth;
             for (int i = 0; i < numPoints; ++i)
@@ -113,8 +105,11 @@ int main(int argc, char *argv[])
 
                 const auto p = cv::Point3f(tangoPoints[i].x, tangoPoints[i].y, tangoPoints[i].z);
                 if (project3dPointTo2d(p, depthCam.f, depthCam.cx, depthCam.cy, depthCam.w, depthCam.h, iImg, jImg, depth))
-                    frame->depth.at<uint16_t>(iImg, jImg) = depth;
+                    frame->depth.at<uint16_t>(iImg, jImg) = 0xFFFF;//depth;
             }
+
+            cv::imshow("test", frame->depth);
+            cv::waitKey(300);
 
             frame->frameNumber = numFrames;
             frameQueue.put(frame);

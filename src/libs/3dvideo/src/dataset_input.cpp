@@ -24,13 +24,13 @@ DatasetInput::DatasetInput(const std::string &path)
     cr[ColorDataFormat::BGR] = [&](Frame &f)
     {
         f.color = cv::Mat(meta.color.h, meta.color.w, CV_8UC3);
-        return bool(in.read((char *)f.color.data, f.color.total()));
+        return bool(in.read((char *)f.color.data, f.color.total() * f.color.elemSize()));
     };
     cr[ColorDataFormat::YUV_NV21] = [&](Frame &f)
     {
         // WARNING! Not thread safe (but helps reduce dynamic memory allocation).
         static auto yuvImg = cv::Mat(3 * meta.color.h / 2, meta.color.w, CV_8UC1);
-        const bool ok = bool(in.read((char *)yuvImg.data, yuvImg.total()));
+        const bool ok = bool(in.read((char *)yuvImg.data, yuvImg.total() * yuvImg.elemSize()));
         // Rather inefficient to convert each frame, but it's easier to work with. Will optimize if required.
         cv::cvtColor(yuvImg, f.color, cv::COLOR_YUV2BGR_NV21);
         return ok;
@@ -46,7 +46,7 @@ DatasetInput::DatasetInput(const std::string &path)
     fp[Field::DEPTH] = [&](Frame &f)
     {
         f.depth = cv::Mat(meta.depth.h, meta.depth.w, CV_16UC1);
-        return bool(in.read((char *)f.depth.data, f.depth.total()));
+        return bool(in.read((char *)f.depth.data, f.depth.total() * f.depth.elemSize()));
     };
 }
 

@@ -163,6 +163,8 @@ void RealsenseGrabber::run()
             continue;
         }
 
+        auto frame = std::make_shared<Frame>();
+
         const auto colorInfo = color->QueryInfo(), depthInfo = depth->QueryInfo();
         const auto colorTimestamp = color->QueryTimeStamp(), depthTimestamp = depth->QueryTimeStamp();
         ++numFrames;
@@ -177,7 +179,8 @@ void RealsenseGrabber::run()
             TLOG(ERROR) << "Could not acquire access to color buffer for frame #" << numFrames << ", status is: " << accessStatus;
             continue;
         }
-        cv::Mat colorMat(colorInfo.height, colorInfo.width, CV_8UC3, colorData.planes[0]);
+
+        cv::Mat(colorInfo.height, colorInfo.width, CV_8UC3, colorData.planes[0]).copyTo(frame->color);
         color->ReleaseAccess(&colorData);
 
         accessStatus = depth->AcquireAccess(RealSense::Image::ACCESS_READ, RealSense::Image::PIXEL_FORMAT_DEPTH, &depthData);
@@ -186,11 +189,15 @@ void RealsenseGrabber::run()
             TLOG(ERROR) << "Could not acquire access to depth buffer for frame #" << numFrames << ", status is: " << accessStatus;
             continue;
         }
-        cv::Mat depthMat(depthInfo.height, depthInfo.width, CV_16UC1, depthData.planes[0]);
+
+        cv::Mat(depthInfo.height, depthInfo.width, CV_16UC1, depthData.planes[0]).copyTo(frame->depth);
         depth->ReleaseAccess(&depthData);
 
         senseManager->ReleaseFrame();
-        produce(std::make_shared<Frame>(numFrames, colorMat, colorTimestamp, depthMat, depthTimestamp));
+
+        frame->frameNumber = numFrames;
+        frame->cTimestamp = colorTimestamp, frame->dTimestamp = depthTimestamp;
+        produce(frame);
     }
 
     TLOG(INFO) << "Grabbing thread has finished, last status: " << status;

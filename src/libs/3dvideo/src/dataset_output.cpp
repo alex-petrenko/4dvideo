@@ -46,9 +46,9 @@ Status DatasetOutput::writeFrame(const Frame &frame)
     binWrite(Field::FRAME_SECTION);
     writeField(Field::FRAME_NUMBER, frame.frameNumber);
 
-    writeField(Field::COLOR, frame.color.data, frame.color.total());
+    writeField(Field::COLOR, frame.color.data, frame.color.total() * frame.color.elemSize());
     writeField(Field::COLOR_TIMESTAMP, frame.cTimestamp);
-    writeField(Field::DEPTH, frame.depth.data, frame.depth.total());
+    writeField(Field::DEPTH, frame.depth.data, frame.depth.total() * frame.color.elemSize());
     writeField(Field::DEPTH_TIMESTAMP, frame.dTimestamp);
 
     return Status::SUCCESS;
