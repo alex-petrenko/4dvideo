@@ -48,7 +48,7 @@ Status DatasetOutput::writeFrame(const Frame &frame)
 
     writeField(Field::COLOR, frame.color.data, frame.color.total() * frame.color.elemSize());
     writeField(Field::COLOR_TIMESTAMP, frame.cTimestamp);
-    writeField(Field::DEPTH, frame.depth.data, frame.depth.total() * frame.color.elemSize());
+    writeField(Field::DEPTH, frame.depth.data, frame.depth.total() * frame.depth.elemSize());
     writeField(Field::DEPTH_TIMESTAMP, frame.dTimestamp);
 
     return Status::SUCCESS;

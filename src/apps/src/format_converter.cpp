@@ -105,11 +105,11 @@ int main(int argc, char *argv[])
 
                 const auto p = cv::Point3f(tangoPoints[i].x, tangoPoints[i].y, tangoPoints[i].z);
                 if (project3dPointTo2d(p, depthCam.f, depthCam.cx, depthCam.cy, depthCam.w, depthCam.h, iImg, jImg, depth))
-                    frame->depth.at<uint16_t>(iImg, jImg) = 0xFFFF;//depth;
+                    frame->depth.at<uint16_t>(iImg, jImg) = depth;
             }
 
-            cv::imshow("test", frame->depth);
-            cv::waitKey(300);
+            cv::imshow("test", frame->color);
+            cv::waitKey(100);
 
             frame->frameNumber = numFrames;
             frameQueue.put(frame);

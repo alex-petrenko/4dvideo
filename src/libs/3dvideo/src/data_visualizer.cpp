@@ -24,7 +24,7 @@ inline void resizeImg(const cv::Mat &img, cv::Mat &dst, int w, int h)
 
 void handleEvents(CancellationToken &cancel)
 {
-    const auto key = cv::waitKey(200);
+    const auto key = cv::waitKey(15);
     if (key == ' ')
     {
         if (!appState().isGrabbingStarted())
@@ -84,6 +84,7 @@ void DataVisualizer::process(std::shared_ptr<Frame> &frame)
             const auto c = color.at<cv::Vec3b>(i, j);
             auto &res = colorWithDepth.at<cv::Vec3b>(i, j);
             res = c;
+
             if (d <= minDistMm || d >= maxDistMm)
                 continue;
 
@@ -92,5 +93,5 @@ void DataVisualizer::process(std::shared_ptr<Frame> &frame)
         }
     }
 
-    cv::imshow(windowName, frame->color);
+    cv::imshow(windowName, colorWithDepth);
 }
