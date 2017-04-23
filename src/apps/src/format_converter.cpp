@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 
     std::thread writerThread([&]
     {
-        DatasetWriter writer(R"(C:\temp\tst\converted.4dv)", frameQueue, cancellationToken);
+        DatasetWriter writer(outputPath, frameQueue, cancellationToken);
         writer.init();
         writer.run();
     });
