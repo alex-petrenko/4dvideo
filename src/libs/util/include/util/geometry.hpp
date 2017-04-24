@@ -5,6 +5,7 @@
 #include <opencv2/core.hpp>
 
 #include <util/macro.hpp>
+#include <util/camera.hpp>
 
 
 /// Types.
@@ -89,6 +90,15 @@ inline bool project3dPointTo2d(const cv::Point3f &p,
         return false;
     depth = uint16_t(p.z * 1000);  // depth is in millimeters
     return true;
+}
+
+inline bool project3dPointTo2d(const cv::Point3f &p,
+                               const CameraParams &cam,
+                               int &iImg,
+                               int &jImg,
+                               uint16_t &depth)
+{
+    project3dPointTo2d(p, cam.f, cam.cx, cam.cy, cam.w, cam.h, iImg, jImg, depth);
 }
 
 FORCE_INLINE Orientation triOrientation(int x1, int y1, int x2, int y2, int x3, int y3)

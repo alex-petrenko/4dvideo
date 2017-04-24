@@ -30,6 +30,44 @@ Player::PlayerImpl *activePlayer = nullptr;
 void glfwWindowKeyCallback(GLFWwindow *, int key, int scancode, int, int);
 void glfwScrollCallback(GLFWwindow *, double, double yScroll);
 
+// OpenGL stuff
+
+const char *vertexShader =
+"#version 330 core\n"
+"layout(location = 0) in vec3 vertexPosition_modelspace;"
+"layout(location = 1) in vec3 vertexNormal;"
+""
+"uniform mat4 transform;"
+""
+"out vec3 v;"
+"out vec3 normal;"
+""
+"void main()"
+"{"
+//"    gl_Position = vec4((vertexPosition.y - 320.0) / 320.0, (180.0 - vertexPosition.x) / 180.0, 0, 1);"
+//"    gl_PointSize = 13;"
+"    gl_Position = transform * vec4(vertexPosition_modelspace, 1.0);"
+"    v = vertexPosition_modelspace;"
+"    normal = vertexNormal;"
+//"    color = vertexColor;"
+"}";
+
+const char *fragmentShader =
+"#version 330 core\n"
+""
+"in vec3 v;"
+"in vec3 normal;"
+""
+"out vec4 color;"
+""
+"void main()"
+"{"
+"    vec3 lightPos = vec3(0, 0, 3);"
+"    vec3 lightDirection = normalize(lightPos - v);"
+"    color = vec4(0.3, 0.3, 0.3, 0.0) + vec4(vec3(0.5, 0.5, 0.5) * max(float(dot(normal, lightDirection)), 0.0), 1.0);"
+//"    color = vec4(1,1,1,1);"
+"}";
+
 }
 
 
@@ -52,7 +90,6 @@ public:
     void init()
     {
         const SensorManager &sensorManager = appState().getSensorManager();
-        CameraParams depthCam;
         DepthDataFormat depthFormat;
         sensorManager.getDepthParams(depthCam, depthFormat);
         screenW = depthCam.w;
@@ -75,6 +112,28 @@ public:
 
         glfwMakeContextCurrent(window);
         glfwSwapInterval(1);
+
+        initOpenGL();
+    }
+
+    void initOpenGL()
+    {
+        shaderLoader = std::make_shared<ShaderLoader>(vertexShader, fragmentShader, "4D");
+        program = shaderLoader->getProgram();
+
+        glGenVertexArrays(1, &vertexArrayID);
+        glBindVertexArray(vertexArrayID);
+
+        glGenBuffers(1, &vertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glGenBuffers(1, &normalBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+
+        transformUniformID = glGetUniformLocation(program, "transform");
+
+        glClearColor(0.0f, 0.0f, 0.0f, 1);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
     }
 
     void onScroll(double scroll)
@@ -93,25 +152,108 @@ public:
     {
         FrameQueue &queue = parent.q;
 
-        std::shared_ptr<Frame> frame;
-        const bool hasNewFrame = queue.pop(frame, 10);
-        if (hasNewFrame)
-            process(*frame);
+        if (!currentFrame)
+            queue.pop(currentFrame, 10);
+
+        if (canPlayCurrentFrame())
+            setupNewFrame();
+
+        draw();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
         return !glfwWindowShouldClose(window);
     }
 
-    void process(Frame &frame)
+    void draw()
     {
-        TLOG(INFO) << "Processing frame #" << frame.frameNumber;
+        
+
+
+    }
+
+    bool canPlayCurrentFrame()
+    {
+        if (!currentFrame)
+            return false;
+
+        return true;
+    }
+
+    void setupNewFrame()
+    {
+        points.clear();
+
+        int iImg, jImg;
+        ushort depth;
+        for (size_t i = 0; i < frame.frameCloud.size(); ++i)
+            if (project3dPointTo2d(frame.frameCloud[i], depthCam, iImg, jImg, depth))
+                points.emplace_back(iImg, jImg);
+            else
+                points.emplace_back(0, 0);
+
+        std::vector<short> indexMap(points.size());
+        delaunay(points, indexMap);
+        delaunay.generateTriangles();
+        delaunay.getTriangles(triangles, numTriangles);
+
+        const float sideLengthThreshold = 0.1f;  // in meters
+        const float zThreshold = 0.05f;
+
+        int j = 0;
+        for (int i = 0; i < numTriangles; ++i)
+        {
+            Triangle3D &t3d = triangles3D[j];
+            const Triangle &t = triangles[i];
+
+            t3d.p1 = frame.frameCloud[indexMap[t.p1]];
+            t3d.p2 = frame.frameCloud[indexMap[t.p2]];
+            t3d.p3 = frame.frameCloud[indexMap[t.p3]];
+
+            float minZ = t3d.p1.z, maxZ = t3d.p1.z;
+            minZ = std::min(minZ, t3d.p2.z);
+            minZ = std::min(minZ, t3d.p3.z);
+            maxZ = std::max(maxZ, t3d.p2.z);
+            maxZ = std::max(maxZ, t3d.p3.z);
+            if (maxZ - minZ > zThreshold)
+                continue;
+
+            const float a = float(cv::norm(t3d.a()));
+            if (a > sideLengthThreshold) continue;
+            const float b = float(cv::norm(t3d.b()));
+            if (b > sideLengthThreshold) continue;
+            const float c = float(cv::norm(t3d.c()));
+            if (c > sideLengthThreshold) continue;
+
+            const cv::Point3f n = triNormal(t3d.p1, t3d.p2, t3d.p3);
+            // all three points have same normal TODO: optimize
+            pointNormals[j].p1 = pointNormals[j].p2 = pointNormals[j].p3 = n;
+
+            ++j;
+        }
     }
 
 private:
     Player &parent;
+
+    // GLFW
+
     GLFWwindow *window = nullptr;
     int screenW = 0, screenH = 0;
+
+    // OpenGL stuff
+
+    std::shared_ptr<ShaderLoader> shaderLoader;
+    GLint program;
+    GLuint vertexArrayID, vertexBuffer, normalBuffer;
+    GLint transformUniformID;
+    /*GLint vertexID, uvID, colorID;*/
+
+    // player state
+
+    std::shared_ptr<Frame> currentFrame;
+    std::vector<PointIJ> points;
+    CameraParams depthCam;
 };
 
 

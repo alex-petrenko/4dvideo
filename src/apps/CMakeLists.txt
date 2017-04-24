@@ -13,7 +13,7 @@ add_app_default(dataset_visualizer_app src/dataset_visualizer_app.cpp)
 target_link_libraries(dataset_visualizer_app 3dvideo ${OpenCV_LIBS})
 
 add_app_default(4d_player_app src/4d_player_app.cpp)
-target_link_libraries(4d_player_app 3dvideo tri)
+target_link_libraries(4d_player_app 3dvideo tri ${OPENGL_LIBRARIES})
 
 # TODO REMOVE
 add_app_default(_test_app src/_test_app.cpp)
