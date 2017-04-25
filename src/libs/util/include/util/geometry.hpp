@@ -72,16 +72,16 @@ enum Orientation
 /// Functions.
 
 inline bool project3dPointTo2d(const cv::Point3f &p,
-                               double f,
-                               double cx,
-                               double cy,
+                               float f,
+                               float cx,
+                               float cy,
                                int w,
                                int h,
                                int &iImg,
                                int &jImg,
                                uint16_t &depth)
 {
-    const float fDivZ = float(f) / p.z;
+    const float fDivZ = f / p.z;
     iImg = int(fDivZ * p.y + cy);
     if (iImg < 0 || iImg >= h)
         return false;
@@ -99,6 +99,13 @@ inline bool project3dPointTo2d(const cv::Point3f &p,
                                uint16_t &depth)
 {
     project3dPointTo2d(p, cam.f, cam.cx, cam.cy, cam.w, cam.h, iImg, jImg, depth);
+}
+
+inline cv::Point3f project2dPointTo3d(int i, int j, uint16_t d, const CameraParams &cam)
+{
+    const auto z = float(d) / 1000;  // z in meters
+    const auto zDivF = z / cam.f;
+    return cv::Point3f((i - cam.cy) * zDivF, (j - cam.cx) * zDivF, z);
 }
 
 FORCE_INLINE Orientation triOrientation(int x1, int y1, int x2, int y2, int x3, int y3)

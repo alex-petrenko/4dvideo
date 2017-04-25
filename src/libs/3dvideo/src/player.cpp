@@ -68,6 +68,16 @@ const char *fragmentShader =
 //"    color = vec4(1,1,1,1);"
 "}";
 
+
+struct Triangle3D  // <-- temporary slow version, should replace with indexed mode
+{
+    cv::Point3f p1, p2, p3;
+
+    cv::Point3f a() const { return p2 - p1; }
+    cv::Point3f b() const { return p3 - p2; }
+    cv::Point3f c() const { return p1 - p3; }
+};
+
 }
 
 
@@ -78,6 +88,8 @@ class Player::PlayerImpl
 public:
     PlayerImpl(Player &parent)
         : parent(parent)
+        , triangles3D(maxNumTriangles)
+        , pointNormals(maxNumTriangles)
     {
     }
 
@@ -165,13 +177,6 @@ public:
         return !glfwWindowShouldClose(window);
     }
 
-    void draw()
-    {
-        
-
-
-    }
-
     bool canPlayCurrentFrame()
     {
         if (!currentFrame)
@@ -182,15 +187,20 @@ public:
 
     void setupNewFrame()
     {
-        points.clear();
+        cloud.clear(), points.clear();
 
-        int iImg, jImg;
-        ushort depth;
-        for (size_t i = 0; i < frame.frameCloud.size(); ++i)
-            if (project3dPointTo2d(frame.frameCloud[i], depthCam, iImg, jImg, depth))
-                points.emplace_back(iImg, jImg);
-            else
-                points.emplace_back(0, 0);
+        const auto depth = currentFrame->depth;
+        const uint16_t minDepth = 200, maxDepth = 6000;
+        for (int i = 0; i < depth.rows; ++i)
+            for (int j = 0; j < depth.cols; ++j)
+            {
+                const uint16_t d = depth.at<uint16_t>(i, j);
+                if (d > minDepth && d < maxDepth)
+                {
+                    points.emplace_back(i, j);
+                    cloud.emplace_back(project2dPointTo3d(i, j, d, depthCam));
+                }
+            }
 
         std::vector<short> indexMap(points.size());
         delaunay(points, indexMap);
@@ -206,9 +216,9 @@ public:
             Triangle3D &t3d = triangles3D[j];
             const Triangle &t = triangles[i];
 
-            t3d.p1 = frame.frameCloud[indexMap[t.p1]];
-            t3d.p2 = frame.frameCloud[indexMap[t.p2]];
-            t3d.p3 = frame.frameCloud[indexMap[t.p3]];
+            t3d.p1 = cloud[indexMap[t.p1]];
+            t3d.p2 = cloud[indexMap[t.p2]];
+            t3d.p3 = cloud[indexMap[t.p3]];
 
             float minZ = t3d.p1.z, maxZ = t3d.p1.z;
             minZ = std::min(minZ, t3d.p2.z);
@@ -233,6 +243,11 @@ public:
         }
     }
 
+    void draw()
+    {
+
+    }
+
 private:
     Player &parent;
 
@@ -253,7 +268,14 @@ private:
 
     std::shared_ptr<Frame> currentFrame;
     std::vector<PointIJ> points;
+    std::vector<cv::Point3f> cloud;
+    std::vector<Triangle3D> triangles3D, pointNormals;
+
+    Triangle *triangles = nullptr;
+    int numTriangles = 0;
+
     CameraParams depthCam;
+    Delaunay delaunay;
 };
 
 
