@@ -26,7 +26,13 @@ namespace
 
 // constants
 constexpr int colorW = 1920, colorH = 1080;
-constexpr int depthW = 480, depthH = 360;
+
+#if defined(DEPTH_360P)
+    constexpr int depthW = 480, depthH = 360;
+#else
+    constexpr int depthW = 320, depthH = 240;
+#endif
+
 constexpr int fps = 30;
 
 }
