@@ -173,6 +173,7 @@ TEST_F(tri, saveLoad)
     delaunay.saveTriangulation(pathJoin(getTestDataFolder(), "tmp_triangulation.tri"), int(p1.size()), p1.data(), int(t1.size()), t1.data());
     delaunay.loadTriangulation(pathJoin(getTestDataFolder(), "tmp_triangulation.tri"), p2, t2);
 
+    EXPECT_FALSE(p1.empty());
     EXPECT_EQ(p1.size(), p2.size());
     EXPECT_EQ(memcmp(p1.data(), p2.data(), p1.size() * sizeof(p1.front())), 0);
     EXPECT_EQ(t1.size(), t2.size());
