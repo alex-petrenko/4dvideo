@@ -11,8 +11,8 @@ int main()
 
     std::thread readerThread([&]
     {
-        DatasetReader reader(R"(C:\all\projects\itseez\data\testing\special_datasets\003_push_ups.4dv)", cancellationToken);
-        // DatasetReader reader(R"(C:\temp\tst\dataset.4dv)", cancellationToken);
+        //DatasetReader reader(R"(C:\all\projects\itseez\data\testing\special_datasets\003_push_ups.4dv)", cancellationToken);
+        DatasetReader reader(R"(C:\temp\tst\dataset.4dv)", cancellationToken);
         reader.addQueue(&frameQueue);
         reader.init();
         reader.run();

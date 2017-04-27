@@ -6,8 +6,10 @@ target_link_libraries(3d_video_player tri ${OPENGL_LIBRARIES} ${GLFW_LIBRARIES} 
 add_app_default(format_converter src/format_converter.cpp)
 target_link_libraries(format_converter util 3dvideo ${OpenCV_LIBS})
 
-add_app_default(realsense_grabber_app src/realsense_grabber_app.cpp)
-target_link_libraries(realsense_grabber_app util realsense ${OpenCV_LIBS})
+if (RSSDK_FOUND)
+    add_app_default(realsense_grabber_app src/realsense_grabber_app.cpp)
+    target_link_libraries(realsense_grabber_app util realsense ${OpenCV_LIBS})
+endif()
 
 add_app_default(dataset_visualizer_app src/dataset_visualizer_app.cpp)
 target_link_libraries(dataset_visualizer_app 3dvideo ${OpenCV_LIBS})

@@ -1,3 +1,5 @@
+#include <util/tiny_logger.hpp>
+
 #include <3dvideo/app_state.hpp>
 #include <3dvideo/dataset_writer.hpp>
 
@@ -28,4 +30,5 @@ void DatasetWriter::init()
 void DatasetWriter::process(std::shared_ptr<Frame> &frame)
 {
     dataset.writeFrame(*frame);
+    TLOG(INFO) << "Finished writing frame #" << frame->frameNumber;
 }

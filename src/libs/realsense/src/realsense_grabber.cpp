@@ -52,13 +52,20 @@ RealsenseGrabber::RealsenseGrabber(const CancellationToken &cancellationToken)
 
 RealsenseGrabber::~RealsenseGrabber()
 {
-    data->senseManager->Release();
+    if (data->senseManager)
+        data->senseManager->Release();
 }
 
 void RealsenseGrabber::init()
 {
     data->senseManager = PXCSenseManager::CreateInstance();
     auto senseManager = data->senseManager;
+
+    if (!senseManager)
+    {
+        TLOG(ERROR) << "Could not start initialization";
+        return;
+    }
 
     auto session = senseManager->QuerySession();
     auto version = session->QueryVersion();
