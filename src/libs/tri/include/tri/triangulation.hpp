@@ -14,7 +14,7 @@
 
 typedef uint32_t EdgeIdx;
 
-const int maxCoord = 640;
+const int maxCoord = 1280;
 const int maxNumPoints = 32767;
 const uint32_t maxNumEdges = 512 * 1024;
 const uint32_t maxNumTriangles = maxNumEdges / 2;

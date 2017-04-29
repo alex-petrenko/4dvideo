@@ -23,8 +23,8 @@ int main(int argc, char *argv[])
 
     std::thread readerThread([&]
     {
-        // DatasetReader reader(R"(C:\temp\tst\converted.4dv)", cancellationToken);
-        DatasetReader reader(R"(C:\temp\tst\dataset.4dv)", cancellationToken);
+        DatasetReader reader(datasetPath, cancellationToken);
+        // DatasetReader reader(R"(C:\temp\tst\dataset.4dv)", cancellationToken);
         reader.addQueue(&frameQueue);
         reader.init();
         reader.run();

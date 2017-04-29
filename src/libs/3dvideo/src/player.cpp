@@ -104,6 +104,7 @@ public:
         const SensorManager &sensorManager = appState().getSensorManager();
         DepthDataFormat depthFormat;
         sensorManager.getDepthParams(depthCam, depthFormat);
+        depthCam.scale(scale);
         screenW = depthCam.w;
         screenH = depthCam.h;
 
@@ -150,14 +151,14 @@ public:
 
     void onScroll(double scroll)
     {
-    /*    double scale;
-        if (yScroll > 0)
-        scale = pow(1.1, std::abs(yScroll));
+        double scaleCoeff;
+        if (scroll > 0)
+            scaleCoeff = pow(1.1, std::abs(scroll));
         else
-        scale = pow(0.9, std::abs(yScroll));
-        TLOG(INFO) << __FUNCTION__ << " scale is " << scale;
-        scaleMatrix = glm::scale(scaleMatrix, glm::vec3(float(scale)));
-        isLongPress = false;*/
+            scaleCoeff = pow(0.9, std::abs(scroll));
+        TLOG(INFO) << __FUNCTION__ << " scale is " << scaleCoeff;
+        scaleMatrix = glm::scale(scaleMatrix, glm::vec3(float(scaleCoeff)));
+        isLongPress = false;
     }
 
     bool loopBody()
@@ -203,8 +204,8 @@ public:
                 const uint16_t d = depth.at<uint16_t>(i, j);
                 if (d > minDepth && d < maxDepth && points.size() < std::numeric_limits<short>::max())
                 {
-                    points.emplace_back(i, j);
-                    cloud.emplace_back(project2dPointTo3d(i, j, d, depthCam));
+                    points.emplace_back(short(scale * i), short(scale * j));
+                    cloud.emplace_back(project2dPointTo3d(scale * i, scale * j, d, depthCam));
                 }
             }
 
@@ -420,6 +421,7 @@ private:
     cv::Point3f modelCenter;
 
     CameraParams depthCam;
+    const float scale = 2;
     Delaunay delaunay;
 };
 
