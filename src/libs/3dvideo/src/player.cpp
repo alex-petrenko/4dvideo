@@ -182,6 +182,12 @@ public:
         if (!currentFrame)
             return false;
 
+        static int counter = 0;
+        ++counter;
+        if (counter % 2 ==0)
+            return true;
+        else return false;
+
         return true;
     }
 
@@ -304,11 +310,12 @@ public:
             isLongPress = false;
         }
 
-        const float focus = 520.965f;
+        /*const float focus = 520.965f;
         const float cx = 319.223f, cy = 175.641f;
         CameraParams camera(focus, cx, cy, 640, 360);
-        camera.scale(2);
+        camera.scale(2);*/
 
+        CameraParams camera = depthCam;
         glm::mat4 projectionMatrix = projectionMatrixFromPinholeCamera(camera, 0.1f, 100.0f);
 
         glm::mat4 viewMatrix = glm::lookAt(

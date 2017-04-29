@@ -105,7 +105,7 @@ inline cv::Point3f project2dPointTo3d(int i, int j, uint16_t d, const CameraPara
 {
     const auto z = float(d) / 1000;  // z in meters
     const auto zDivF = z / cam.f;
-    return cv::Point3f((i - cam.cy) * zDivF, (j - cam.cx) * zDivF, z);
+    return { (j - cam.cx) * zDivF, (i - cam.cy) * zDivF, z };
 }
 
 FORCE_INLINE Orientation triOrientation(int x1, int y1, int x2, int y2, int x3, int y3)
