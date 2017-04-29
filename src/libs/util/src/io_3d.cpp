@@ -211,3 +211,34 @@ bool loadBinaryPly(const std::string &filename,
 
     return true;
 }
+
+std::string plyHeader(const std::vector<cv::Point3f> *vertices)
+{
+    std::ostringstream header;
+    header << "ply\n";
+    header << "format binary_little_endian 1.0\n";
+    header << "comment Physical units: meters\n";
+
+    if (vertices)
+    {
+        header << "element vertex " << vertices->size() << "\n";
+        for (char c = 'x'; c <= 'z'; ++c)
+            header << "property float " << c << "\n";
+    }
+
+    header << "end_header\n";
+    return header.str();
+}
+
+/// Disclaimer: this is a very limited version of binary writer, made just for debugging.
+bool saveBinaryPly(const std::string &filename, const std::vector<cv::Point3f> *vertices)
+{
+    std::ofstream ply{ filename, std::ios::binary };
+    const auto header = plyHeader(vertices);
+    ply.write(header.c_str(), header.length());
+
+    if (ply && vertices)
+        ply.write((const char *)vertices->data(), vertices->size() * sizeof(cv::Point3f));
+
+    return bool(ply);
+}
