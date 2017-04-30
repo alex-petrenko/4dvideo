@@ -23,6 +23,9 @@ using namespace std::chrono_literals;
 namespace
 {
 
+constexpr int targetW = 800;
+
+
 // pointer to active Player object for GLFW callbacks
 Player::PlayerImpl *activePlayer = nullptr;
 
@@ -104,6 +107,10 @@ public:
         const SensorManager &sensorManager = appState().getSensorManager();
         DepthDataFormat depthFormat;
         sensorManager.getDepthParams(depthCam, depthFormat);
+        scale = float(targetW) / depthCam.w;
+
+        TLOG(INFO) << "Scale input depth by a factor of: " << scale;
+
         depthCam.scale(scale);
         screenW = depthCam.w;
         screenH = depthCam.h;
@@ -168,8 +175,18 @@ public:
         if (!currentFrame)
             queue.pop(currentFrame, 10);
 
-        if (canPlayCurrentFrame())
-            setupNewFrame();
+        if (currentFrame)
+        {
+            if (currentFrame->frameNumber < lastPlayedFrame)
+            {
+                // beginning of dataset!
+                playbackStarted = std::chrono::system_clock::now();
+                firstFrameTimestamp = currentFrame->dTimestamp;
+            }
+
+            if (canPlayCurrentFrame())
+                setupNewFrame();
+        }
 
         draw();
 
@@ -183,13 +200,9 @@ public:
         if (!currentFrame)
             return false;
 
-        static int counter = 0;
-        ++counter;
-        if (counter % 2 ==0)
-            return true;
-        else return false;
-
-        return true;
+        const double targetPlaybackTimeUs = double(currentFrame->dTimestamp - firstFrameTimestamp) / 10;
+        const auto passedTimeUs = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - playbackStarted).count();
+        return passedTimeUs >= targetPlaybackTimeUs;
     }
 
     void setupNewFrame()
@@ -199,23 +212,27 @@ public:
         const auto depth = currentFrame->depth;
         const uint16_t minDepth = 200, maxDepth = 6000;
         for (int i = 0; i < depth.rows; i += 2)
+        {
+            const short scaleI = short(scale * i);
             for (int j = 0; j < depth.cols; j += 2)
             {
                 const uint16_t d = depth.at<uint16_t>(i, j);
                 if (d > minDepth && d < maxDepth && points.size() < std::numeric_limits<short>::max())
                 {
-                    points.emplace_back(short(scale * i), short(scale * j));
-                    cloud.emplace_back(project2dPointTo3d(short(scale * i), short(scale * j), d, depthCam));
+                    const short scaleJ = short(scale * j);
+                    points.emplace_back(scaleI, scaleJ);
+                    cloud.emplace_back(project2dPointTo3d(scaleI, scaleJ, d, depthCam));
                 }
             }
+        }
 
         std::vector<short> indexMap(points.size());
         delaunay(points, indexMap);
         delaunay.generateTriangles();
         delaunay.getTriangles(triangles, numTriangles);
 
-        const float sideLengthThreshold = 0.1f;  // in meters
-        const float zThreshold = 0.05f;
+        const float sideLengthThreshold = 0.15f;  // in meters
+        const float zThreshold = 0.1f;
 
         int j = 0;
         for (int i = 0; i < numTriangles; ++i)
@@ -253,6 +270,10 @@ public:
 
         if (!meanPointCalculated)
             modelCenter = meanPoint(cloud), meanPointCalculated = true;
+
+        lastPlayedFrame = currentFrame->frameNumber;
+        frameToDraw = currentFrame;
+        currentFrame.reset();
     }
 
     void computeMatricesFromInputs()
@@ -261,11 +282,7 @@ public:
         static double lastTime = glfwGetTime();
         static double longPressStarted = glfwGetTime();
 
-        // Compute time difference between current and last frame
-        double currentTime = glfwGetTime();
-        float deltaTime = float(currentTime - lastTime);
-
-        // Get mouse position
+        // get mouse position
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
 
@@ -273,12 +290,10 @@ public:
 
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
         {
-            float dx = float(xpos - prevCursorPositionX);
-            float dy = float(ypos - prevCursorPositionY);
-            //doSimpleRotation(glm::radians(dy / speedCoeff), glm::radians(dx / speedCoeff), 0.0f);
-
-            float angleX = glm::radians(dy / 10);
-            float angleY = glm::radians(-dx / 10);
+            const float dx = float(xpos - prevCursorPositionX);
+            const float dy = float(ypos - prevCursorPositionY);
+            const float angleX = glm::radians(dy / 10);
+            const float angleY = glm::radians(-dx / 10);
 
             rotation = glm::rotate(rotation, angleX, glm::vec3(rotation[0][0], rotation[1][0], rotation[2][0]));
             rotation = glm::rotate(rotation, angleY, glm::vec3(rotation[0][1], rotation[1][1], rotation[2][1]));
@@ -311,12 +326,7 @@ public:
             isLongPress = false;
         }
 
-        /*const float focus = 520.965f;
-        const float cx = 319.223f, cy = 175.641f;
-        CameraParams camera(focus, cx, cy, 640, 360);
-        camera.scale(2);*/
-
-        CameraParams camera = depthCam;
+        const CameraParams camera = depthCam;
         glm::mat4 projectionMatrix = projectionMatrixFromPinholeCamera(camera, 0.1f, 100.0f);
 
         glm::mat4 viewMatrix = glm::lookAt(
@@ -332,21 +342,18 @@ public:
         mvp = projectionMatrix * viewMatrix * modelMatrix;
 
         prevCursorPositionX = int(xpos), prevCursorPositionY = int(ypos);
-
-        // For the next frame, the "last time" will be "now"
-        lastTime = currentTime;
     }
 
     void draw()
     {
-        if (currentFrame)
+        if (frameToDraw)
         {
             glBindVertexArray(vertexArrayID);
             glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
             glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), triangles3D.data(), GL_DYNAMIC_DRAW);
             glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
             glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), pointNormals.data(), GL_DYNAMIC_DRAW);
-            currentFrame.reset();
+            frameToDraw.reset();
         }
 
         computeMatricesFromInputs();
@@ -407,9 +414,16 @@ private:
     glm::mat4 scaleMatrix, rotation, translationMatrix;
     glm::mat4 mvp;
 
+    bool meanPointCalculated = false;
+    cv::Point3f modelCenter;
+
     // player state
 
-    std::shared_ptr<Frame> currentFrame;
+    int lastPlayedFrame = std::numeric_limits<int>::max();
+    int64_t firstFrameTimestamp = 0;
+    std::chrono::time_point<std::chrono::system_clock> playbackStarted;
+
+    std::shared_ptr<Frame> currentFrame, frameToDraw;
     std::vector<PointIJ> points;
     std::vector<cv::Point3f> cloud;
     std::vector<Triangle3D> triangles3D, pointNormals;
@@ -417,12 +431,12 @@ private:
     Triangle *triangles = nullptr;
     int numTriangles = 0, num3DTriangles = 0;
 
-    bool meanPointCalculated = false;
-    cv::Point3f modelCenter;
+    Delaunay delaunay;
+
+    // camera and screen
 
     CameraParams depthCam;
-    const float scale = 2;
-    Delaunay delaunay;
+    float scale;
 };
 
 
