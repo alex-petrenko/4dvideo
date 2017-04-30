@@ -22,7 +22,7 @@ public:
     {
         for (int i = 0; i < 10000; ++i)
             for (auto q : queues)
-                q->put(i);
+                while (!cancel && !q->put(i, 1));
     }
 };
 
@@ -33,6 +33,8 @@ TEST(producerConsumer, basic)
 {
     constexpr int numQueues = 10, numConsumersPerQueue = 10;
     std::vector<ConcurrentQueue<int>> queues(numQueues);
+    for (auto &q : queues)
+        q.setMaxCapacity(10);
     std::vector<std::thread> consumerThreads;
 
     CancellationToken cancel;

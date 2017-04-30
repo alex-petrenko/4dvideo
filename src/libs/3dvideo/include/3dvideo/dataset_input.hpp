@@ -26,6 +26,7 @@ class DatasetInput
 
 public:
     DatasetInput(const std::string &path);
+    ~DatasetInput();
 
     Status readHeader();
     Status readFrame(Frame &frame);

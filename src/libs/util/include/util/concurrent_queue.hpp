@@ -13,18 +13,34 @@ public:
     typedef typename T ElementType;
 
 public:
-    void put(T item)
+    ConcurrentQueue()
     {
-        std::unique_lock<std::mutex> lock(mutex);
-        q.push(item);
-        notify(lock);
     }
 
-    void put(T &&item)
+    ConcurrentQueue(size_t maxCapacity)
+        : maxCapacity(maxCapacity)
+    {
+    }
+
+    void setMaxCapacity(size_t capacity)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        maxCapacity = capacity;
+    }
+
+    /// Returns false if there's no available space in the buffer after timeoutMs milliseconds.
+    bool put(T item, int timeoutMs)
     {
         std::unique_lock<std::mutex> lock(mutex);
-        q.emplace(item);
-        notify(lock);
+        if (q.size() >= maxCapacity)
+            capacityCV.wait_for(lock, std::chrono::milliseconds(timeoutMs));
+
+        if (q.size() >= maxCapacity)
+            return false;  // timed out
+
+        q.push(std::move(item));
+        notify(lock, newItemCV);
+        return true;
     }
 
     /// Returns false if there are no items in the queue after timeoutMs milliseconds.
@@ -32,13 +48,14 @@ public:
     {
         std::unique_lock<std::mutex> lock(mutex);
         if (q.empty())
-            cv.wait_for(lock, std::chrono::milliseconds(timeoutMs));
+            newItemCV.wait_for(lock, std::chrono::milliseconds(timeoutMs));
 
         if (q.empty())
             return false;  // timed out
 
         item = q.front();
         q.pop();
+        notify(lock, capacityCV);
         return true;
     }
 
@@ -49,14 +66,15 @@ public:
     }
 
 private:
-    void notify(std::unique_lock<std::mutex> &lock)
+    void notify(std::unique_lock<std::mutex> &lock, std::condition_variable &cv)
     {
         lock.unlock();  // should unlock before notify, otherwise waiting thread will wake up only to block again
         cv.notify_one();
     }
 
 private:
+    size_t maxCapacity = std::numeric_limits<size_t>::max();
     std::queue<T> q;
     mutable std::mutex mutex;
-    std::condition_variable cv;
+    std::condition_variable newItemCV, capacityCV;
 };

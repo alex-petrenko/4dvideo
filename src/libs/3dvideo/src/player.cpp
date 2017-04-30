@@ -205,7 +205,7 @@ public:
                 if (d > minDepth && d < maxDepth && points.size() < std::numeric_limits<short>::max())
                 {
                     points.emplace_back(short(scale * i), short(scale * j));
-                    cloud.emplace_back(project2dPointTo3d(scale * i, scale * j, d, depthCam));
+                    cloud.emplace_back(project2dPointTo3d(short(scale * i), short(scale * j), d, depthCam));
                 }
             }
 

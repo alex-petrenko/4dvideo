@@ -50,6 +50,11 @@ DatasetInput::DatasetInput(const std::string &path)
     };
 }
 
+DatasetInput::~DatasetInput()
+{
+    TLOG(INFO);
+}
+
 Status DatasetInput::readHeader()
 {
     if (!in.is_open())

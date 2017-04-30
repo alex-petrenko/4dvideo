@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     const std::string datasetPath(argv[arg++]);
 
     CancellationToken cancellationToken;
-    FrameQueue frameQueue;
+    FrameQueue frameQueue(100);
 
     std::thread readerThread([&]
     {
@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
         // DatasetReader reader(R"(C:\temp\tst\dataset.4dv)", cancellationToken);
         reader.addQueue(&frameQueue);
         reader.init();
-        reader.run();
+        reader.runLoop();
     });
 
     Player player(frameQueue, cancellationToken);

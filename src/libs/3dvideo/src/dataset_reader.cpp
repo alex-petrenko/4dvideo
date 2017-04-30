@@ -6,7 +6,8 @@
 
 DatasetReader::DatasetReader(const std::string &path, const CancellationToken &cancellationToken)
     : FrameProducer(cancellationToken)
-    , dataset(path)
+    , path(path)
+    , dataset(std::make_shared<DatasetInput>(path))
 {
 }
 
@@ -16,14 +17,14 @@ DatasetReader::~DatasetReader()
 
 void DatasetReader::init()
 {
-    const auto status = dataset.readHeader();
+    const auto status = dataset->readHeader();
     if (status != Status::SUCCESS)
     {
         TLOG(ERROR) << "Could not read dataset header!";
         return;
     }
 
-    const auto metadata = dataset.getMetadata();
+    const auto metadata = dataset->getMetadata();
     auto &sensorManager = appState().getSensorManager();
     sensorManager.setColorParams(metadata.color, metadata.colorFormat);
     sensorManager.setDepthParams(metadata.depth, metadata.depthFormat);
@@ -37,13 +38,25 @@ void DatasetReader::run()
         return;
 
     int numFrames = 0;
-    while (!cancel && !dataset.finished())
+    while (!cancel && !dataset->finished())
     {
         std::shared_ptr<Frame> frame = std::make_shared<Frame>();
-        dataset.readFrame(*frame);
+        dataset->readFrame(*frame);
         produce(frame);
         ++numFrames;
     }
 
     TLOG(INFO) << "Read total: " << numFrames << " frames";
+}
+
+void DatasetReader::runLoop()
+{
+    while (!cancel)
+    {
+        run();
+
+        initialized = false;
+        dataset = std::make_shared<DatasetInput>(path);
+        init();
+    }
 }

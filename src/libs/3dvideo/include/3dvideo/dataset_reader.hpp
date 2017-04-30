@@ -14,7 +14,11 @@ public:
 
     virtual void run();
 
+    /// Read dataset in a loop
+    virtual void runLoop();
+
 private:
     bool initialized = false;
-    DatasetInput dataset;
+    std::string path;
+    std::shared_ptr<DatasetInput> dataset;
 };

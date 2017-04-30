@@ -31,7 +31,7 @@ protected:
     virtual void produce(Item item)
     {
         for (auto queue : queues)
-            queue->put(item);
+            while (!cancel && !queue->put(item, 100));
     }
 
 protected:
