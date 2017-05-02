@@ -3,52 +3,53 @@
 
 #include <util/tiny_logger.hpp>
 
+#include <3dvideo/dataset_reader.hpp>
 #include <3dvideo/dataset_writer.hpp>
 #include <3dvideo/data_visualizer.hpp>
 
 
 using namespace std::chrono_literals;
 
-struct s
+
+class WriterCvt : public DatasetWriter
 {
-    cv::Mat m;
+public:
+    WriterCvt(const std::string &path, FrameQueue &q, CancellationToken &cancel)
+        :DatasetWriter(path, q, cancel)
+    {
+    }
+
+    virtual ~WriterCvt()
+    {}
+
+protected:
+    virtual void process(std::shared_ptr<Frame> &frame) override
+    {
+        TLOG(INFO) << frame->dTimestamp;
+        DatasetWriter::process(frame);
+    }
 };
-std::queue<std::shared_ptr<s>> q;
-std::mutex mutex;
+
 
 int main()
 {
-    std::thread th([&]
+    CancellationToken cancellationToken;
+    FrameQueue frameQueue;
+
+    std::thread readerThread([&]
     {
-        for (int i = 0; i < 1000; ++i)
-        {
-            std::this_thread::sleep_for(1ms);
-            std::lock_guard<std::mutex> lock(mutex);
-            auto p = std::make_shared<s>();
-            p->m = cv::Mat::ones(100, 100, CV_8UC1);
-            q.push(p);
-            std::cout << "Produced " << i;
-        }
+        DatasetReader reader(R"(C:\all\projects\itseez\data\testing\special_datasets\002_yoga_wall.4dv)", cancellationToken);
+        // DatasetReader reader(R"(C:\temp\tst\dataset.4dv)", cancellationToken);
+        reader.addQueue(&frameQueue);
+        reader.init();
+        reader.run();
     });
 
-    double sum = 0;
-    while (true)
-    {
-        std::unique_lock<std::mutex> lock(mutex);
-        if (q.empty()) continue;
-        auto p = q.front();
-        q.pop();
-        lock.unlock();
+    WriterCvt writer(R"(C:\all\projects\itseez\data\testing\special_datasets\002_yoga_wall_cvt.4dv)", frameQueue, cancellationToken);
+    writer.init();
+    writer.run();
 
-        for (int i = 0; i < p->m.rows; ++i)
-            for (int j = 0; j < p->m.cols; ++j)
-                sum += p->m.at<uchar>(i, j);
-
-        std::this_thread::sleep_for(2ms);
-        std::cout << sum << std::endl;
-    }
-
-    th.join();
+    readerThread.join();
 
     return EXIT_SUCCESS;
 }

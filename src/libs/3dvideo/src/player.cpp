@@ -200,7 +200,7 @@ public:
         if (!currentFrame)
             return false;
 
-        const double targetPlaybackTimeUs = double(currentFrame->dTimestamp - firstFrameTimestamp) / 10;
+        const auto targetPlaybackTimeUs = double(currentFrame->dTimestamp - firstFrameTimestamp);
         const auto passedTimeUs = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - playbackStarted).count();
         return passedTimeUs >= targetPlaybackTimeUs;
     }

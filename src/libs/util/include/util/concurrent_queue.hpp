@@ -29,7 +29,7 @@ public:
     }
 
     /// Returns false if there's no available space in the buffer after timeoutMs milliseconds.
-    bool put(T item, int timeoutMs)
+    bool put(T item, int timeoutMs = std::numeric_limits<size_t>::max())
     {
         std::unique_lock<std::mutex> lock(mutex);
         if (q.size() >= maxCapacity)

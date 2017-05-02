@@ -8,12 +8,12 @@ class DatasetWriter : public FrameConsumer
 {
 public:
     DatasetWriter(const std::string &path, FrameQueue &q, CancellationToken &cancel);
-    virtual ~DatasetWriter();
+    virtual ~DatasetWriter() override;
 
-    virtual void init();
+    virtual void init() override;
 
-private:
-    virtual void process(std::shared_ptr<Frame> &frame);
+protected:
+    virtual void process(std::shared_ptr<Frame> &frame) override;
 
 private:
     DatasetOutput dataset;

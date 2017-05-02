@@ -75,13 +75,15 @@ int main(int argc, char *argv[])
         double pointCloudTimestamp;
         input.read((char *)&pointCloudTimestamp, sizeof(pointCloudTimestamp));
         endianSwap(&pointCloudTimestamp);
-        frame->dTimestamp = int64_t(pointCloudTimestamp);
+
+        const double pointCloudTimestampUs = pointCloudTimestamp * 1000 * 1000;
+        frame->dTimestamp = int64_t(pointCloudTimestampUs);
 
         if (!input) break;
         int numPoints;
         input.read((char *)&numPoints, sizeof(numPoints));
         endianSwap(&numPoints);
-        TLOG(INFO) << "point cloud timestamp: " << pointCloudTimestamp << " num points: " << numPoints << " size: " << numPoints * 4 * 4;
+        TLOG(INFO) << "point cloud timestamp: " << pointCloudTimestampUs << " num points: " << numPoints << " size: " << numPoints * 4 * 4;
 
         if (numPoints > 0)
         {

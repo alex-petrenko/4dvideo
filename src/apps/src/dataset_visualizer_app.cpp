@@ -11,8 +11,8 @@ int main()
 
     std::thread readerThread([&]
     {
-        DatasetReader reader(R"(C:\all\projects\itseez\data\testing\special_datasets\004_first_realsense.4dv)", cancellationToken);
-        //DatasetReader reader(R"(C:\temp\tst\dataset.4dv)", cancellationToken);
+        //DatasetReader reader(R"(C:\all\projects\itseez\data\testing\special_datasets\002_yoga_wall.4dv)", cancellationToken);
+        DatasetReader reader(R"(C:\temp\tst\converted.4dv)", cancellationToken);
         reader.addQueue(&frameQueue);
         reader.init();
         reader.run();
