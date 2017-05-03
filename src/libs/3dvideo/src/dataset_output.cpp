@@ -53,7 +53,7 @@ Status DatasetOutput::writeFrame(const Frame &frame)
         writeField(Field::DEPTH, (const char *)frame.depth.data, frame.depth.total() * frame.depth.elemSize());
     if (!frame.cloud.empty())
     {
-        writeField(Field::CLOUD_NUM_POINTS, frame.cloud.size());
+        writeField(Field::CLOUD_NUM_POINTS, uint32_t(frame.cloud.size()));
         writeField(Field::CLOUD, (const char *)frame.cloud.data(), frame.cloud.size() * sizeof(frame.cloud.front()));
     }
     writeField(Field::DEPTH_TIMESTAMP, frame.dTimestamp);

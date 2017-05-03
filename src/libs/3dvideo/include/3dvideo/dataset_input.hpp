@@ -48,18 +48,6 @@ private:
         return binRead(value) && binRead(std::forward<Args>(args)...);
     }
 
-    template<typename T>
-    bool readField(Field field, T &value)
-    {
-        Field f;
-        bool ok = binRead(f);
-        if (!ok || f != field)
-            return false;
-
-        ok = binRead(value);
-        return ok;
-    }
-
     bool readMetadataField(Field &field);
     bool readFrameField(Frame &frame, Field &field);
 

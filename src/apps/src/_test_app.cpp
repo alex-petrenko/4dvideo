@@ -25,6 +25,7 @@ public:
 protected:
     virtual void process(std::shared_ptr<Frame> &frame) override
     {
+        frame->dTimestamp /= 10;
         TLOG(INFO) << frame->dTimestamp;
         DatasetWriter::process(frame);
     }
@@ -38,14 +39,15 @@ int main()
 
     std::thread readerThread([&]
     {
-        DatasetReader reader(R"(C:\all\projects\itseez\data\testing\special_datasets\002_yoga_wall.4dv)", cancellationToken);
+        DatasetReader reader(R"(C:\all\projects\itseez\data\testing\special_datasets\004_first_realsense.4dv)", cancellationToken);
         // DatasetReader reader(R"(C:\temp\tst\dataset.4dv)", cancellationToken);
         reader.addQueue(&frameQueue);
         reader.init();
         reader.run();
+        cancellationToken.trigger();
     });
 
-    WriterCvt writer(R"(C:\all\projects\itseez\data\testing\special_datasets\002_yoga_wall_cvt.4dv)", frameQueue, cancellationToken);
+    WriterCvt writer(R"(C:\all\projects\itseez\data\testing\special_datasets\004_first_realsense_cvt.4dv)", frameQueue, cancellationToken);
     writer.init();
     writer.run();
 

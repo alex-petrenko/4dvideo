@@ -9,6 +9,7 @@ DatasetReader::DatasetReader(const std::string &path, const CancellationToken &c
     , path(path)
     , dataset(std::make_shared<DatasetInput>(path))
 {
+    TLOG(INFO) << "Dataset: " << path;
 }
 
 DatasetReader::~DatasetReader()
@@ -55,6 +56,9 @@ void DatasetReader::run()
 
 void DatasetReader::runLoop()
 {
+    if (!initialized)
+        return;
+
     while (!cancel)
     {
         run();

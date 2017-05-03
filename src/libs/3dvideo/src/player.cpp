@@ -200,23 +200,14 @@ public:
         if (!currentFrame)
             return false;
 
-        static bool once = false;
-        if (!once) {
-            once = true; return true;
-        }
-        else return false;
-
         const auto targetPlaybackTimeUs = double(currentFrame->dTimestamp - firstFrameTimestamp);
         const auto passedTimeUs = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - playbackStarted).count();
         return passedTimeUs >= targetPlaybackTimeUs;
     }
 
-    void setupNewFrame()
+    void fillPoints(const cv::Mat &depth)
     {
-        cloud.clear(), points.clear();
-
-        const auto depth = currentFrame->depth;
-        const uint16_t minDepth = 200, maxDepth = 6000;
+        const uint16_t minDepth = 200, maxDepth = 1200;
         for (int i = 0; i < depth.rows; i += 1)
         {
             const short scaleI = short(scale * i);
@@ -231,6 +222,28 @@ public:
                 }
             }
         }
+    }
+
+    void fillPoints(const std::vector<cv::Point3f> &frameCloud)
+    {
+        int iImg, jImg;
+        uint16_t d;
+        for (const auto &p : frameCloud)
+            if (project3dPointTo2d(p, depthCam, iImg, jImg, d))
+            {
+                points.emplace_back(iImg, jImg);
+                cloud.emplace_back(p);
+            }
+    }
+
+    void setupNewFrame()
+    {
+        cloud.clear(), points.clear();
+
+        if (!currentFrame->depth.empty())
+            fillPoints(currentFrame->depth);
+        else
+            fillPoints(currentFrame->cloud);
 
         std::vector<short> indexMap(points.size());
         delaunay(points, indexMap);
@@ -239,8 +252,8 @@ public:
 
         TLOG(INFO) << "Num points: " << points.size() << " num triangles: " << numTriangles;
 
-        const float sideLengthThreshold = 0.15f;  // in meters
-        const float zThreshold = 0.1f;
+        const float sideLengthThreshold = 0.075f;  // in meters
+        const float zThreshold = 0.06f;
 
         int j = 0;
         for (int i = 0; i < numTriangles; ++i)
@@ -252,11 +265,12 @@ public:
             t3d.p2 = cloud[indexMap[t.p2]];
             t3d.p3 = cloud[indexMap[t.p3]];
 
-            float minZ = t3d.p1.z, maxZ = t3d.p1.z;
-            minZ = std::min(minZ, t3d.p2.z);
-            minZ = std::min(minZ, t3d.p3.z);
+            float maxZ = t3d.p1.z;
             maxZ = std::max(maxZ, t3d.p2.z);
             maxZ = std::max(maxZ, t3d.p3.z);
+            float minZ = t3d.p1.z;
+            minZ = std::min(minZ, t3d.p2.z);
+            minZ = std::min(minZ, t3d.p3.z);
             if (maxZ - minZ > zThreshold)
                 continue;
 

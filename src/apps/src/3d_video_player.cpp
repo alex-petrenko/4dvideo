@@ -131,10 +131,6 @@ void computeMatricesFromInputs()
     static double lastTime = glfwGetTime();
     static double longPressStarted = glfwGetTime();
 
-    // Compute time difference between current and last frame
-    double currentTime = glfwGetTime();
-    float deltaTime = float(currentTime - lastTime);
-
     // Get mouse position
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
@@ -201,9 +197,6 @@ void computeMatricesFromInputs()
     mvp = projectionMatrix * viewMatrix * modelMatrix;
 
     prevCursorPositionX = int(xpos), prevCursorPositionY = int(ypos);
-
-    // For the next frame, the "last time" will be "now"
-    lastTime = currentTime;
 }
 
 }
@@ -233,7 +226,7 @@ void generateFrame()
     }
     else
     {
-        if (currentFrameIdx + 1 < frames.size())
+        if (currentFrameIdx < frames.size())
         {
             // play next frame if it's time
         }
@@ -246,21 +239,15 @@ void generateFrame()
         }
     }
 
-    const double frameTargetTime = (frames[currentFrameIdx + 1].timestamp - frames[0].timestamp) / 1;
+    const double frameTargetTime = (frames[currentFrameIdx].timestamp - frames[0].timestamp) / 1;
     const auto passedTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - playbackStarted).count();
     const double passedTime = double(passedTimeMs) / 1000.0;
-
-    if (currentFrameIdx > 0)
-        return;
 
     if (passedTime < frameTargetTime)
     {
         // too soon to play next frame
         return;
     }
-
-    ++currentFrameIdx;
-    newFrame = true;
 
     cloud.clear();
     points.clear();
@@ -276,7 +263,7 @@ void generateFrame()
         for (size_t i = 0; i < frame.frameCloud.size(); ++i)
             if (project3dPointTo2d(frame.frameCloud[i], f, cx, cy, w, h, iImg, jImg, depth)) {
                 points.emplace_back(iImg, jImg);
-                cloud.emplace_back(project2dPointTo3d(iImg, jImg, depth, cam));
+                cloud.emplace_back(frame.frameCloud[i]);
             }
     }
 
@@ -326,6 +313,9 @@ void generateFrame()
     static bool meanPointCalculated = false;
     if (!meanPointCalculated)
         modelCenter = meanPoint(cloud), meanPointCalculated = true;
+
+    ++currentFrameIdx;
+    newFrame = true;
 }
 
 
@@ -502,29 +492,6 @@ void readDataset(const std::string &datasetPath)
         for (int i = 0; i < ARR_LENGTH(extrTranslation); ++i)
             endianSwap(&extrTranslation[i]);
 
-        //int w = 640, h = 360;
-        //float f = 520.965f, cx = 319.223f, cy = 175.641f;  // parameters of Tango camera
-
-        //int coeff = 2;
-        //w *= coeff, h *= coeff;
-        //f *= coeff, cx *= coeff, cy *= coeff;
-
-        //uint16_t depth;
-        //int iImg, jImg;
-        //for (int i = 0; i < numPoints; ++i)
-        //{
-        //    const cv::Point3f p(tangoPoints[i].x, tangoPoints[i].y, tangoPoints[i].z);
-        //    project3dPointTo2d(p, f, cx, cy, w, h, iImg, jImg, depth);
-
-        //    cv::drawMarker(imageBgr, cv::Point(jImg, iImg), cv::Scalar(0xFF, 0xFF, 0xFF), cv::MARKER_SQUARE, 3);
-        //}
-
-        //if (numPoints > 0)
-        //{
-        //    cv::imshow("image", imageBgr);
-        //    cv::waitKey();
-        //}
-
         ++numFrames;
         TLOG(INFO) << "num frames: " << numFrames;
     }
@@ -541,39 +508,6 @@ int main(int argc, char *argv[])
     const std::string datasetPath(argv[arg++]);
 
     std::thread readingThread(readDataset, datasetPath);
-
-    //const std::string testCloudFilename(pathJoin(getTestDataFolder(), "test_point_cloud.ply"));
-    //const bool isOk = loadBinaryPly(testCloudFilename, &cloud);
-    //TLOG(INFO) << "load binary ply status ok? " << isOk;
-
-    //const int w = 640, h = 360;
-    //const float f = 520.965f, cx = 319.223f, cy = 175.641f;  // parameters of Tango camera
-    //int iImg, jImg;
-    //ushort depth;
-    //for (size_t i = 0; i < cloud.size(); ++i)
-    //    if (project3dPointTo2d(cloud[i], f, cx, cy, w, h, iImg, jImg, depth))
-    //        points.emplace_back(iImg, jImg);
-
-    //std::vector<short> indexMap(points.size());
-    //delaunay(points, indexMap);
-    //delaunay.generateTriangles();
-    //delaunay.getTriangles(triangles, numTriangles);
-
-    //for (int i = 0; i < numTriangles; ++i)
-    //{
-    //    Triangle3D &t3d = triangles3D[i];
-    //    const Triangle &t = triangles[i];
-
-    //    t3d.p1 = cloud[indexMap[t.p1]];
-    //    t3d.p2 = cloud[indexMap[t.p2]];
-    //    t3d.p3 = cloud[indexMap[t.p3]];
-
-    //    cv::Point3f n = triNormal(t3d.p1, t3d.p2, t3d.p3);
-    //    // all three points have same normal TODO: optimize
-    //    pointNormals[i].p1 = pointNormals[i].p2 = pointNormals[i].p3 = n;
-    //}
-
-    //modelCenter = meanPoint(cloud);
 
     if (!glfwInit())
         TLOG(FATAL) << "Could not init glfw!";

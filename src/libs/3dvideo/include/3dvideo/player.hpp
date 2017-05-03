@@ -15,7 +15,6 @@ public:
     virtual ~Player();
 
     virtual void init();
-
     virtual void run();
 
 private:

@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     sensorManager.setColorParams(colorCam, ColorDataFormat::YUV_NV21);
 
     CameraParams depthCam(520.9651f, 319.223f, 175.641f, 640, 360);
-    sensorManager.setDepthParams(depthCam, DepthDataFormat::UNSIGNED_16BIT_MM);
+    sensorManager.setDepthParams(depthCam, DepthDataFormat::CLOUD_FLOAT_METERS);
 
     sensorManager.setInitialized();
 
@@ -102,7 +102,6 @@ int main(int argc, char *argv[])
                 endianSwap(&tangoPoints[i].y);
                 endianSwap(&tangoPoints[i].z);
                 frame->cloud.emplace_back(tangoPoints[i].x, tangoPoints[i].y, tangoPoints[i].z);
-                
             }
 
             cv::imshow("test", frame->color);

@@ -98,7 +98,7 @@ inline bool project3dPointTo2d(const cv::Point3f &p,
                                int &jImg,
                                uint16_t &depth)
 {
-    project3dPointTo2d(p, cam.f, cam.cx, cam.cy, cam.w, cam.h, iImg, jImg, depth);
+    return project3dPointTo2d(p, cam.f, cam.cx, cam.cy, cam.w, cam.h, iImg, jImg, depth);
 }
 
 inline cv::Point3f project2dPointTo3d(int i, int j, uint16_t d, const CameraParams &cam)

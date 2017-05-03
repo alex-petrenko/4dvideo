@@ -1,10 +1,14 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 
+#include <util/geometry.hpp>
 #include <util/tiny_logger.hpp>
 
 #include <3dvideo/app_state.hpp>
 #include <3dvideo/data_visualizer.hpp>
+
+
+using namespace std::chrono_literals;
 
 
 namespace
@@ -56,6 +60,17 @@ DataVisualizer::~DataVisualizer()
     cv::destroyAllWindows();
 }
 
+void DataVisualizer::init()
+{
+    const SensorManager &sensorManager = appState().getSensorManager();
+    while (!cancel && !sensorManager.isInitialized())
+        std::this_thread::sleep_for(30ms);
+
+    ColorDataFormat cFormat;
+    DepthDataFormat dFormat;
+    sensorManager.getColorParams(colorCamera, cFormat), sensorManager.getDepthParams(depthCamera, dFormat);
+}
+
 /// Visualizer uses OpenCV UI and thus requires this overload to be able to handle GUI events.
 void DataVisualizer::run()
 {
@@ -68,10 +83,23 @@ void DataVisualizer::run()
 
 void DataVisualizer::process(std::shared_ptr<Frame> &frame)
 {
-    const int w = std::min(frame->color.cols, frame->depth.cols), h = std::min(frame->color.rows, frame->depth.rows);
+    const int w = std::min(colorCamera.w, depthCamera.w), h = std::min(colorCamera.h, depthCamera.h);
     cv::Mat color, depth, colorWithDepth = cv::Mat::zeros(h, w, CV_8UC3);
     resizeImg(frame->color, color, w, h);
-    resizeImg(frame->depth, depth, w, h);
+
+    if (!frame->depth.empty())
+        resizeImg(frame->depth, depth, w, h);
+    else
+    {
+        cv::Mat projection = cv::Mat::zeros(depthCamera.h, depthCamera.w, CV_16UC1);
+        int iImg, jImg;
+        uint16_t d;
+        for (const auto &p : frame->cloud)
+            if (project3dPointTo2d(p, depthCamera, iImg, jImg, d))
+                projection.at<uint16_t>(iImg, jImg) = d;
+
+        resizeImg(projection, depth, w, h);
+    }
 
     const float maxColor = 40, maxDistMm = 6000, minDistMm = 300;
 

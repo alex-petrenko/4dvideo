@@ -11,13 +11,16 @@ class DataVisualizer : public FrameConsumer
 
 public:
     DataVisualizer(FrameQueue &q, CancellationToken &cancellationToken);
-    virtual ~DataVisualizer();
+    virtual ~DataVisualizer() override;
 
-    virtual void run();
+    virtual void init() override;
+    virtual void run() override;
 
 private:
     virtual void process(std::shared_ptr<Frame> &frame);
 
 private:
+    CameraParams colorCamera, depthCamera;
+
     static constexpr char *windowName = "Sensor realtime data";
 };

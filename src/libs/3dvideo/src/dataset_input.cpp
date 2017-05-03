@@ -48,6 +48,14 @@ DatasetInput::DatasetInput(const std::string &path)
         f.depth = cv::Mat(meta.depth.h, meta.depth.w, CV_16UC1);
         return bool(in.read((char *)f.depth.data, f.depth.total() * f.depth.elemSize()));
     };
+    fp[Field::CLOUD_NUM_POINTS] = [&](Frame &f)
+    {
+        uint32_t numPoints;
+        const auto ok = binRead(numPoints);
+        if (ok) f.cloud.resize(numPoints);
+        return ok;
+    };
+    fp[Field::CLOUD] = [&](Frame &f) { return bool(in.read((char *)f.cloud.data(), f.cloud.size() * sizeof(cv::Point3f))); };
 }
 
 DatasetInput::~DatasetInput()
@@ -127,7 +135,6 @@ Status DatasetInput::readFrame(Frame &frame)
     if (!ok)
     {
         TLOG(ERROR) << "Error while reading frame!";
-        isFinished = true;
         return Status::ERROR;
     }
 
@@ -163,5 +170,3 @@ bool DatasetInput::finished() const
 {
     return isFinished;
 }
-
-

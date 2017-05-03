@@ -41,4 +41,5 @@ enum class ColorDataFormat : uint8_t
 enum class DepthDataFormat : uint8_t
 {
     UNSIGNED_16BIT_MM = 0x10,
+    CLOUD_FLOAT_METERS = 0xf0,
 };

@@ -20,6 +20,7 @@ int main()
 
     // visualizer works with OpenCV GUI, so it's better to keep it on main thread
     DataVisualizer visualizer(frameQueue, cancellationToken);
+    visualizer.init();
     visualizer.run();
 
     readerThread.join();
