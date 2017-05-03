@@ -96,18 +96,13 @@ int main(int argc, char *argv[])
             if (!input) break;
             input.read((char *)tangoPoints, numPointBytes);
 
-            frame->depth = cv::Mat::zeros(depthCam.h, depthCam.w, CV_16UC1);
-            int iImg, jImg;
-            uint16_t depth;
             for (int i = 0; i < numPoints; ++i)
             {
                 endianSwap(&tangoPoints[i].x);
                 endianSwap(&tangoPoints[i].y);
                 endianSwap(&tangoPoints[i].z);
-
-                const auto p = cv::Point3f(tangoPoints[i].x, tangoPoints[i].y, tangoPoints[i].z);
-                if (project3dPointTo2d(p, depthCam.f, depthCam.cx, depthCam.cy, depthCam.w, depthCam.h, iImg, jImg, depth))
-                    frame->depth.at<uint16_t>(iImg, jImg) = depth;
+                frame->cloud.emplace_back(tangoPoints[i].x, tangoPoints[i].y, tangoPoints[i].z);
+                
             }
 
             cv::imshow("test", frame->color);

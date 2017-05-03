@@ -21,7 +21,7 @@ private:
     template<typename T>
     void binWrite(T val)
     {
-        out.write((char *)&val, sizeof(val));
+        out.write((const char *)&val, sizeof(val));
     }
 
     template<typename T, typename... Args>
@@ -37,11 +37,10 @@ private:
         binWrite(value);
     }
 
-    template<typename T>
-    void writeField(Field field, const T *data, size_t size)
+    void writeField(Field field, const char *data, size_t size)
     {
         binWrite(field);
-        out.write((char *)data, size);
+        out.write(data, size);
     }
 
 private:

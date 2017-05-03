@@ -9,16 +9,11 @@
 #include <util/concurrent_queue.hpp>
 
 
-class Frame
+struct Frame
 {
-public:
-    Frame();
-    Frame(int idx, const cv::Mat &color, int64_t cTimestamp, const cv::Mat &depth, int64_t dTimestamp);
-    ~Frame();
-
-public:
     int frameNumber = 0;
     cv::Mat color, depth;
+    std::vector<cv::Point3f> cloud;
     int64_t cTimestamp = 0, dTimestamp = 0;
 };
 

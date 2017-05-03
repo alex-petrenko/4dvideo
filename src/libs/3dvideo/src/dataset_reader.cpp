@@ -41,9 +41,13 @@ void DatasetReader::run()
     while (!cancel && !dataset->finished())
     {
         std::shared_ptr<Frame> frame = std::make_shared<Frame>();
-        dataset->readFrame(*frame);
-        produce(frame);
-        ++numFrames;
+        if (dataset->readFrame(*frame) == Status::SUCCESS)
+        {
+            produce(frame);
+            ++numFrames;
+        }
+        else
+            TLOG(ERROR) << "Error while reading frame!";
     }
 
     TLOG(INFO) << "Read total: " << numFrames << " frames";

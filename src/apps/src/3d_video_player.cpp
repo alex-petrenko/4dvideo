@@ -41,7 +41,7 @@ int viewportW = 0, viewportH = 0;
 bool initialized = false;
 bool isLongPress = false;
 
-//std::vector<cv::Point3f> cloud;
+std::vector<cv::Point3f> cloud;
 std::vector<PointIJ> points;
 cv::Point3f modelCenter;
 Delaunay delaunay;
@@ -184,7 +184,7 @@ void computeMatricesFromInputs()
     const float focus = 520.965f;
     const float cx = 319.223f, cy = 175.641f;
     CameraParams camera(focus, cx, cy, 640, 360);
-    camera.scale(2);
+    //camera.scale(2);
 
     glm::mat4 projectionMatrix = projectionMatrixFromPinholeCamera(camera, 0.1f, 100.0f);
 
@@ -246,9 +246,12 @@ void generateFrame()
         }
     }
 
-    const double frameTargetTime = (frames[currentFrameIdx + 1].timestamp - frames[0].timestamp) / 1.4;
+    const double frameTargetTime = (frames[currentFrameIdx + 1].timestamp - frames[0].timestamp) / 1;
     const auto passedTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - playbackStarted).count();
     const double passedTime = double(passedTimeMs) / 1000.0;
+
+    if (currentFrameIdx > 0)
+        return;
 
     if (passedTime < frameTargetTime)
     {
@@ -259,26 +262,33 @@ void generateFrame()
     ++currentFrameIdx;
     newFrame = true;
 
-    const Frame &frame = frames[currentFrameIdx];
+    cloud.clear();
     points.clear();
 
-    const int w = 640, h = 360;
-    const float f = 520.965f, cx = 319.223f, cy = 175.641f;  // parameters of Tango camera
-    int iImg, jImg;
-    ushort depth;
-    for (size_t i = 0; i < frame.frameCloud.size(); ++i)
-        if (project3dPointTo2d(frame.frameCloud[i], f, cx, cy, w, h, iImg, jImg, depth))
-            points.emplace_back(iImg, jImg);
-        else
-            points.emplace_back(0, 0);
+    {
+        const int w = 640, h = 360;
+        const float f = 520.9651f, cx = 319.223f, cy = 175.641f;  // parameters of Tango camera
+        int iImg, jImg;
+        ushort depth;
+        const Frame &frame = frames[currentFrameIdx];
+
+        CameraParams cam{ f, cx, cy, w, h };
+        for (size_t i = 0; i < frame.frameCloud.size(); ++i)
+            if (project3dPointTo2d(frame.frameCloud[i], f, cx, cy, w, h, iImg, jImg, depth)) {
+                points.emplace_back(iImg, jImg);
+                cloud.emplace_back(project2dPointTo3d(iImg, jImg, depth, cam));
+            }
+    }
 
     std::vector<short> indexMap(points.size());
     delaunay(points, indexMap);
     delaunay.generateTriangles();
     delaunay.getTriangles(triangles, numTriangles);
 
-    const float sideLengthThreshold = 0.1f;  // in meters
-    const float zThreshold = 0.05f;
+    TLOG(INFO) << "Num points: " << points.size() << " num triangles: " << numTriangles;
+
+    const float sideLengthThreshold = 0.15f;  // in meters
+    const float zThreshold = 0.1f;
 
     int j = 0;
     for (int i = 0; i < numTriangles; ++i)
@@ -286,9 +296,9 @@ void generateFrame()
         Triangle3D &t3d = triangles3D[j];
         const Triangle &t = triangles[i];
 
-        t3d.p1 = frame.frameCloud[indexMap[t.p1]];
-        t3d.p2 = frame.frameCloud[indexMap[t.p2]];
-        t3d.p3 = frame.frameCloud[indexMap[t.p3]];
+        t3d.p1 = cloud[indexMap[t.p1]];
+        t3d.p2 = cloud[indexMap[t.p2]];
+        t3d.p3 = cloud[indexMap[t.p3]];
 
         float minZ = t3d.p1.z, maxZ = t3d.p1.z;
         minZ = std::min(minZ, t3d.p2.z);
@@ -315,7 +325,7 @@ void generateFrame()
 
     static bool meanPointCalculated = false;
     if (!meanPointCalculated)
-        modelCenter = meanPoint(frame.frameCloud), meanPointCalculated = true;
+        modelCenter = meanPoint(cloud), meanPointCalculated = true;
 }
 
 
@@ -429,9 +439,9 @@ float extrTranslation[3];
 
 void readDataset(const std::string &datasetPath)
 {
-    std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\special_datasets\001_first_kitchen.bin)", std::ios::binary);
+    //std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\special_datasets\001_first_kitchen.bin)", std::ios::binary);
     //std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\special_datasets\002_yoga_wall.bin)", std::ios::binary);
-    //std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\special_datasets\003_push_ups.bin)", std::ios::binary);
+    std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\special_datasets\003_push_ups.bin)", std::ios::binary);
     //std::ifstream dataset(R"(C:\all\projects\itseez\data\testing\1487499749_dataset.bin)", std::ios::binary);
 
     cv::Mat imageBgr(720, 1080, CV_8UC3);
@@ -575,7 +585,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // to make MacOS happy; should not be needed
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    const int screenWidth = 640 * 2, screenHeight = 360 * 2;
+    const int screenWidth = 640 * 1, screenHeight = 360 * 1;
     window = glfwCreateWindow(screenWidth, screenHeight, "3d_video_player", NULL, NULL);
 
     if (window)

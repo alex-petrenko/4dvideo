@@ -23,7 +23,7 @@ using namespace std::chrono_literals;
 namespace
 {
 
-constexpr int targetW = 800;
+constexpr int targetW = 640;
 
 
 // pointer to active Player object for GLFW callbacks
@@ -200,6 +200,12 @@ public:
         if (!currentFrame)
             return false;
 
+        static bool once = false;
+        if (!once) {
+            once = true; return true;
+        }
+        else return false;
+
         const auto targetPlaybackTimeUs = double(currentFrame->dTimestamp - firstFrameTimestamp);
         const auto passedTimeUs = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - playbackStarted).count();
         return passedTimeUs >= targetPlaybackTimeUs;
@@ -211,10 +217,10 @@ public:
 
         const auto depth = currentFrame->depth;
         const uint16_t minDepth = 200, maxDepth = 6000;
-        for (int i = 0; i < depth.rows; i += 2)
+        for (int i = 0; i < depth.rows; i += 1)
         {
             const short scaleI = short(scale * i);
-            for (int j = 0; j < depth.cols; j += 2)
+            for (int j = 0; j < depth.cols; j += 1)
             {
                 const uint16_t d = depth.at<uint16_t>(i, j);
                 if (d > minDepth && d < maxDepth && points.size() < std::numeric_limits<short>::max())
@@ -230,6 +236,8 @@ public:
         delaunay(points, indexMap);
         delaunay.generateTriangles();
         delaunay.getTriangles(triangles, numTriangles);
+
+        TLOG(INFO) << "Num points: " << points.size() << " num triangles: " << numTriangles;
 
         const float sideLengthThreshold = 0.15f;  // in meters
         const float zThreshold = 0.1f;

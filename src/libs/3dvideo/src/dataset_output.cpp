@@ -46,9 +46,16 @@ Status DatasetOutput::writeFrame(const Frame &frame)
     binWrite(Field::FRAME_SECTION);
     writeField(Field::FRAME_NUMBER, frame.frameNumber);
 
-    writeField(Field::COLOR, frame.color.data, frame.color.total() * frame.color.elemSize());
+    writeField(Field::COLOR, (const char *)frame.color.data, frame.color.total() * frame.color.elemSize());
     writeField(Field::COLOR_TIMESTAMP, frame.cTimestamp);
-    writeField(Field::DEPTH, frame.depth.data, frame.depth.total() * frame.depth.elemSize());
+
+    if (!frame.depth.empty())
+        writeField(Field::DEPTH, (const char *)frame.depth.data, frame.depth.total() * frame.depth.elemSize());
+    if (!frame.cloud.empty())
+    {
+        writeField(Field::CLOUD_NUM_POINTS, frame.cloud.size());
+        writeField(Field::CLOUD, (const char *)frame.cloud.data(), frame.cloud.size() * sizeof(frame.cloud.front()));
+    }
     writeField(Field::DEPTH_TIMESTAMP, frame.dTimestamp);
 
     return Status::SUCCESS;

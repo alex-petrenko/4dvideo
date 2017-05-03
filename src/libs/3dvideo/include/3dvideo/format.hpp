@@ -26,6 +26,8 @@ enum class Field : uint16_t
     COLOR_TIMESTAMP = 0x0f11,
     DEPTH = 0x0f20,
     DEPTH_TIMESTAMP = 0x0f21,
+    CLOUD = 0x0f30,
+    CLOUD_NUM_POINTS = 0x0f31,
 };
 
 constexpr uint32_t FORMAT_VERSION = 1;
