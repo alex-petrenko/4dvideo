@@ -39,27 +39,27 @@ const char *vertexShader =
 "#version 330 core\n"
 "layout(location = 0) in vec3 vertexPosition_modelspace;"
 "layout(location = 1) in vec3 vertexNormal;"
+"layout(location = 2) in vec2 vertexUV;"
 ""
 "uniform mat4 transform;"
 ""
 "out vec3 v;"
 "out vec3 normal;"
+"out vec2 uv;"
 ""
 "void main()"
 "{"
-//"    gl_Position = vec4((vertexPosition.y - 320.0) / 320.0, (180.0 - vertexPosition.x) / 180.0, 0, 1);"
-//"    gl_PointSize = 13;"
 "    gl_Position = transform * vec4(vertexPosition_modelspace, 1.0);"
 "    v = vertexPosition_modelspace;"
 "    normal = vertexNormal;"
-//"    color = vertexColor;"
+"    uv = vertexUV;"
 "}";
 
 const char *fragmentShader =
 "#version 330 core\n"
-""
 "in vec3 v;"
 "in vec3 normal;"
+"in vec2 uv;"
 ""
 "out vec4 color;"
 ""
@@ -68,7 +68,6 @@ const char *fragmentShader =
 "    vec3 lightPos = vec3(0, 0, 3);"
 "    vec3 lightDirection = normalize(lightPos - v);"
 "    color = vec4(0.3, 0.3, 0.3, 0.0) + vec4(vec3(0.5, 0.5, 0.5) * max(float(dot(normal, lightDirection)), 0.0), 1.0);"
-//"    color = vec4(1,1,1,1);"
 "}";
 
 
@@ -148,6 +147,8 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
         glGenBuffers(1, &normalBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+        glGenBuffers(1, &uvBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
 
         transformUniformID = glGetUniformLocation(program, "transform");
 
@@ -208,10 +209,10 @@ public:
     void fillPoints(const cv::Mat &depth)
     {
         const uint16_t minDepth = 200, maxDepth = 1200;
-        for (int i = 0; i < depth.rows; i += 1)
+        for (int i = 0; i < depth.rows; i += 2)
         {
             const short scaleI = short(scale * i);
-            for (int j = 0; j < depth.cols; j += 1)
+            for (int j = 0; j < depth.cols; j += 2)
             {
                 const uint16_t d = depth.at<uint16_t>(i, j);
                 if (d > minDepth && d < maxDepth && points.size() < std::numeric_limits<short>::max())
@@ -368,6 +369,8 @@ public:
 
     void draw()
     {
+        std::vector<cv::Point2f> tmpUV(num3DTriangles * 3, cv::Point2f(0.3, 0.3));  // TODO
+
         if (frameToDraw)
         {
             glBindVertexArray(vertexArrayID);
@@ -375,6 +378,10 @@ public:
             glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), triangles3D.data(), GL_DYNAMIC_DRAW);
             glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
             glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), pointNormals.data(), GL_DYNAMIC_DRAW);
+
+            glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
+            glBufferData(GL_ARRAY_BUFFER, tmpUV.size() * sizeof(cv::Point2f), tmpUV.data(), GL_DYNAMIC_DRAW);
+
             frameToDraw.reset();
         }
 
@@ -406,6 +413,17 @@ public:
             (void*)0            // array buffer offset
         );
 
+        glEnableVertexAttribArray(2);
+        glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
+        glVertexAttribPointer(
+            2,
+            2,                  // size (2 floats for uv)
+            GL_FLOAT,           // type
+            GL_FALSE,           // normalized?
+            0,                  // stride
+            (void*)0            // array buffer offset
+        );
+
         glUniformMatrix4fv(transformUniformID, 1, GL_FALSE, glm::value_ptr(mvp));
 
         glDrawArrays(GL_TRIANGLES, 0, 3 * numTriangles);
@@ -429,9 +447,9 @@ private:
 
     std::shared_ptr<ShaderLoader> shaderLoader;
     GLint program;
-    GLuint vertexArrayID, vertexBuffer, normalBuffer;
+    GLuint vertexArrayID;
+    GLuint vertexBuffer, normalBuffer, uvBuffer;
     GLint transformUniformID;
-    /*GLint vertexID, uvID, colorID;*/
 
     glm::mat4 scaleMatrix, rotation, translationMatrix;
     glm::mat4 mvp;
