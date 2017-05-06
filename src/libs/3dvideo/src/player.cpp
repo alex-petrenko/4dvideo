@@ -83,6 +83,11 @@ struct Triangle3D  // <-- temporary slow version, should replace with indexed mo
     cv::Point3f c() const { return p1 - p3; }
 };
 
+struct TriangleUV
+{
+    cv::Point2f p1, p2, p3;
+};
+
 }
 
 
@@ -94,7 +99,8 @@ public:
     PlayerImpl(Player &parent)
         : parent(parent)
         , triangles3D(maxNumTriangles)
-        , pointNormals(maxNumTriangles)
+        , trianglesNormals(maxNumTriangles)
+        , trianglesUv(maxNumTriangles)
     {
     }
 
@@ -107,7 +113,9 @@ public:
     void init()
     {
         const SensorManager &sensorManager = appState().getSensorManager();
+        ColorDataFormat colorFormat;
         DepthDataFormat depthFormat;
+        sensorManager.getColorParams(colorCam, colorFormat);
         sensorManager.getDepthParams(depthCam, depthFormat);
         scale = float(targetW) / depthCam.w;
 
@@ -251,12 +259,30 @@ public:
 
     void setupNewFrame()
     {
-        cloud.clear(), points.clear();
+        cloud.clear(), points.clear(), uv.clear();
 
         if (!currentFrame->depth.empty())
             fillPoints(currentFrame->depth);
         else
             fillPoints(currentFrame->cloud);
+
+        // generate uv coordinates by reprojecting 3D points onto color image plane
+        {
+            int iImg, jImg;
+            uint16_t d;
+            for (size_t i = 0; i < cloud.size(); ++i)
+            {
+                float u = 0, v = 0;
+                if (project3dPointTo2d(cloud[i], colorCam, iImg, jImg, d))
+                {
+                    // u - horizontal texture coordinate, v - vertical
+                    u = float(jImg) / colorCam.w;
+                    v = float(iImg) / colorCam.h;
+                }
+
+                uv.emplace_back(u, v);
+            }
+        }
 
         std::vector<short> indexMap(points.size());
         delaunay(points, indexMap);
@@ -272,11 +298,16 @@ public:
         for (int i = 0; i < numTriangles; ++i)
         {
             Triangle3D &t3d = triangles3D[j];
+            TriangleUV &tuv = trianglesUv[j];
             const Triangle &t = triangles[i];
 
             t3d.p1 = cloud[indexMap[t.p1]];
             t3d.p2 = cloud[indexMap[t.p2]];
             t3d.p3 = cloud[indexMap[t.p3]];
+
+            tuv.p1 = uv[indexMap[t.p1]];
+            tuv.p2 = uv[indexMap[t.p2]];
+            tuv.p3 = uv[indexMap[t.p3]];
 
             float maxZ = t3d.p1.z;
             maxZ = std::max(maxZ, t3d.p2.z);
@@ -296,7 +327,7 @@ public:
 
             const cv::Point3f n = triNormal(t3d.p1, t3d.p2, t3d.p3);
             // all three points have same normal TODO: optimize
-            pointNormals[j].p1 = pointNormals[j].p2 = pointNormals[j].p3 = n;
+            trianglesNormals[j].p1 = trianglesNormals[j].p2 = trianglesNormals[j].p3 = n;
 
             ++j;
         }
@@ -381,18 +412,15 @@ public:
 
     void draw()
     {
-        std::vector<cv::Point2f> tmpUV(num3DTriangles * 3, cv::Point2f(0.3, 0.3));  // TODO
-
         if (frameToDraw)
         {
             glBindVertexArray(vertexArrayID);
             glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
             glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), triangles3D.data(), GL_DYNAMIC_DRAW);
             glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
-            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), pointNormals.data(), GL_DYNAMIC_DRAW);
-
+            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), trianglesNormals.data(), GL_DYNAMIC_DRAW);
             glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
-            glBufferData(GL_ARRAY_BUFFER, tmpUV.size() * sizeof(cv::Point2f), tmpUV.data(), GL_DYNAMIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(TriangleUV), trianglesUv.data(), GL_DYNAMIC_DRAW);
 
             // loading texture data to GPU
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameToDraw->color.cols, frameToDraw->color.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, frameToDraw->color.data);
@@ -483,7 +511,10 @@ private:
     std::shared_ptr<Frame> currentFrame, frameToDraw;
     std::vector<PointIJ> points;
     std::vector<cv::Point3f> cloud;
-    std::vector<Triangle3D> triangles3D, pointNormals;
+    std::vector<cv::Point2f> uv;
+
+    std::vector<Triangle3D> triangles3D, trianglesNormals;
+    std::vector<TriangleUV> trianglesUv;
 
     Triangle *triangles = nullptr;
     int numTriangles = 0, num3DTriangles = 0;
@@ -492,7 +523,7 @@ private:
 
     // camera and screen
 
-    CameraParams depthCam;
+    CameraParams colorCam, depthCam;
     float scale;
 };
 
