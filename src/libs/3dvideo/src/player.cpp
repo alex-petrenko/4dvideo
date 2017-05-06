@@ -61,13 +61,16 @@ const char *fragmentShader =
 "in vec3 normal;"
 "in vec2 uv;"
 ""
-"out vec4 color;"
+"uniform sampler2D textureSampler;"
+""
+"out vec3 color;"
 ""
 "void main()"
 "{"
 "    vec3 lightPos = vec3(0, 0, 3);"
 "    vec3 lightDirection = normalize(lightPos - v);"
-"    color = vec4(0.3, 0.3, 0.3, 0.0) + vec4(vec3(0.5, 0.5, 0.5) * max(float(dot(normal, lightDirection)), 0.0), 1.0);"
+// "    color = vec4(0.3, 0.3, 0.3, 0.0) + vec4(vec3(0.5, 0.5, 0.5) * max(float(dot(normal, lightDirection)), 0.0), 1.0);"
+"    color = texture(textureSampler, uv).rgb;"
 "}";
 
 
@@ -152,6 +155,16 @@ public:
 
         transformUniformID = glGetUniformLocation(program, "transform");
 
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        // should not actually be needed, just in case; default is GL_REPEAT
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        // trilinear filtering
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
         glClearColor(0.0f, 0.0f, 0.0f, 1);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
@@ -164,7 +177,6 @@ public:
             scaleCoeff = pow(1.1, std::abs(scroll));
         else
             scaleCoeff = pow(0.9, std::abs(scroll));
-        TLOG(INFO) << __FUNCTION__ << " scale is " << scaleCoeff;
         scaleMatrix = glm::scale(scaleMatrix, glm::vec3(float(scaleCoeff)));
         isLongPress = false;
     }
@@ -382,6 +394,10 @@ public:
             glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
             glBufferData(GL_ARRAY_BUFFER, tmpUV.size() * sizeof(cv::Point2f), tmpUV.data(), GL_DYNAMIC_DRAW);
 
+            // loading texture data to GPU
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameToDraw->color.cols, frameToDraw->color.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, frameToDraw->color.data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+
             frameToDraw.reset();
         }
 
@@ -450,6 +466,7 @@ private:
     GLuint vertexArrayID;
     GLuint vertexBuffer, normalBuffer, uvBuffer;
     GLint transformUniformID;
+    GLuint texture;
 
     glm::mat4 scaleMatrix, rotation, translationMatrix;
     glm::mat4 mvp;
