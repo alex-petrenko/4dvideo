@@ -18,6 +18,16 @@ DatasetInput::DatasetInput(const std::string &path)
     mp[Field::DEPTH_INTRINSICS] = [&] { return binRead(meta.depth.f, meta.depth.cx, meta.depth.cy); };
     mp[Field::COLOR_FORMAT] = [&] { return binRead(meta.colorFormat); };
     mp[Field::DEPTH_FORMAT] = [&] { return binRead(meta.depthFormat); };
+    mp[Field::EXTRINSICS_RMAT] = [&]
+    {
+        meta.calibration.rmat = cv::Mat(3, 3, CV_32F);
+        return bool(in.read((char *)meta.calibration.rmat.data, meta.calibration.rmat.total() * meta.calibration.rmat.elemSize()));
+    };
+    mp[Field::EXTRINSICS_TVEC] = [&]
+    {
+        meta.calibration.tvec = cv::Mat(3, 1, CV_32F);
+        return bool(in.read((char *)meta.calibration.tvec.data, meta.calibration.tvec.total() * meta.calibration.tvec.elemSize()));
+    };
 
     // color data readers
     auto &cr = colorReaders;

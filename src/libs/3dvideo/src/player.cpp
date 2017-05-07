@@ -117,6 +117,7 @@ public:
         DepthDataFormat depthFormat;
         sensorManager.getColorParams(colorCam, colorFormat);
         sensorManager.getDepthParams(depthCam, depthFormat);
+        calibration = sensorManager.getCalibration();
         scale = float(targetW) / depthCam.w;
 
         TLOG(INFO) << "Scale input depth by a factor of: " << scale;
@@ -134,8 +135,10 @@ public:
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // to make MacOS happy; should not be needed
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
+        
+        TLOG(INFO) << "Creating window...";
         window = glfwCreateWindow(screenW, screenH, "4D player", nullptr, nullptr);
+        TLOG(INFO) << "Window created!";
 
         glfwSetKeyCallback(window, glfwWindowKeyCallback);
         glfwSetScrollCallback(window, glfwScrollCallback);
@@ -148,6 +151,8 @@ public:
 
     void initOpenGL()
     {
+        TLOG(INFO);
+
         shaderLoader = std::make_shared<ShaderLoader>(vertexShader, fragmentShader, "4D");
         program = shaderLoader->getProgram();
 
@@ -270,11 +275,11 @@ public:
         {
             int iImg, jImg;
             uint16_t d;
-            const cv::Point3f translation{ -58.7298f / 1000, 0.0619417f / 1000, -0.380207f / 1000};  // TODO
+            const cv::Point3f *translation = reinterpret_cast<cv::Point3f *>(calibration.tvec.data);
             for (size_t i = 0; i < cloud.size(); ++i)
             {
                 float u = 0, v = 0;
-                const cv::Point3f pointColorSpace = cloud[i] + translation;
+                const cv::Point3f pointColorSpace = cloud[i] + *translation;
                 if (project3dPointTo2d(pointColorSpace, colorCam, iImg, jImg, d))
                 {
                     // u - horizontal texture coordinate, v - vertical
@@ -526,6 +531,7 @@ private:
     // camera and screen
 
     CameraParams colorCam, depthCam;
+    Calibration calibration;
     float scale;
 };
 

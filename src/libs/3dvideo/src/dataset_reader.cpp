@@ -25,10 +25,11 @@ void DatasetReader::init()
         return;
     }
 
-    const auto metadata = dataset->getMetadata();
+    auto metadata = dataset->getMetadata();
     auto &sensorManager = appState().getSensorManager();
     sensorManager.setColorParams(metadata.color, metadata.colorFormat);
     sensorManager.setDepthParams(metadata.depth, metadata.depthFormat);
+    sensorManager.setCalibration(metadata.calibration);
     sensorManager.setInitialized();
     initialized = true;
 }

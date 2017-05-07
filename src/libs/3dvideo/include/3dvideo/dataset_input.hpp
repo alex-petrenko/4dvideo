@@ -17,6 +17,7 @@ struct DatasetMetadata
     CameraParams color, depth;
     ColorDataFormat colorFormat;
     DepthDataFormat depthFormat;
+    Calibration calibration;
 };
 
 class DatasetInput

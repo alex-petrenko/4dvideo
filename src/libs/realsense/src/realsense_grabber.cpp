@@ -142,11 +142,19 @@ void RealsenseGrabber::init()
 
     CameraParams colorCamera(colorF, colorCenter.x, colorCenter.y, colorW, colorH);
     CameraParams depthCamera(depthF, depthCenter.x, depthCenter.y, depthW, depthH);
+    Calibration calibration;
+    calibration.rmat = cv::Mat(3, 3, CV_32F, extrinsics.rotation);
+    calibration.tvec = cv::Mat(3, 1, CV_32F, extrinsics.translation);
+    calibration.tvec *= 0.001f;  // convert millimeters to meters
+
     SensorManager &sensorManager = appState().getSensorManager();
     sensorManager.setColorParams(colorCamera, ColorDataFormat::BGR);
     sensorManager.setDepthParams(depthCamera, DepthDataFormat::UNSIGNED_16BIT_MM);
+    sensorManager.setCalibration(calibration);
 
+    TLOG(INFO) << "Calibration parameters. Translation:";
     TLOG(INFO) << extrinsics.translation[0] << " " << extrinsics.translation[1] << " " << extrinsics.translation[2];
+    TLOG(INFO) << "Rotation:";
     for (int i = 0; i < 3; ++i)
         TLOG(INFO) << extrinsics.rotation[i][0] << " " << extrinsics.rotation[i][1] << " " << extrinsics.rotation[i][2];
 

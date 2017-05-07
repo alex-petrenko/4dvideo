@@ -16,9 +16,10 @@ enum class Field : uint16_t
     DEPTH_RESOLUTION = 0x0101,
     COLOR_INTRINSICS = 0x0110,
     DEPTH_INTRINSICS = 0x0111,
-
     COLOR_FORMAT = 0x0120,
     DEPTH_FORMAT = 0x0121,
+    EXTRINSICS_RMAT = 0x0200,
+    EXTRINSICS_TVEC = 0x0201,
 
     // frame data
     FRAME_NUMBER = 0x0f00,

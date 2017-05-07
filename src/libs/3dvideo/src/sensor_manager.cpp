@@ -7,10 +7,15 @@ void SensorManager::setColorParams(const CameraParams &colorCamera, ColorDataFor
     colorFormat = format;
 }
 
-void SensorManager::setDepthParams(const CameraParams & depthCamera, DepthDataFormat format)
+void SensorManager::setDepthParams(const CameraParams &depthCamera, DepthDataFormat format)
 {
     depth = depthCamera;
     depthFormat = format;
+}
+
+void SensorManager::setCalibration(const Calibration &calib)
+{
+    calibration = calib;
 }
 
 void SensorManager::setInitialized(bool value)
@@ -31,4 +36,9 @@ void SensorManager::getColorParams(CameraParams &colorCamera, ColorDataFormat &f
 void SensorManager::getDepthParams(CameraParams &depthCamera, DepthDataFormat &format) const
 {
     depthCamera = depth, format = depthFormat;
+}
+
+Calibration SensorManager::getCalibration() const
+{
+    return calibration;
 }

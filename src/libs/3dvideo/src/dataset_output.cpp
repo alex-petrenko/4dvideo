@@ -22,6 +22,7 @@ Status DatasetOutput::writeHeader(const SensorManager &sensorManager)
     DepthDataFormat depthFormat;
     sensorManager.getColorParams(color, colorFormat);
     sensorManager.getDepthParams(depth, depthFormat);
+    const Calibration calibration = sensorManager.getCalibration();
 
     binWrite(Field::COLOR_RESOLUTION);
     binWrite(color.w, color.h);
@@ -34,6 +35,18 @@ Status DatasetOutput::writeHeader(const SensorManager &sensorManager)
 
     binWrite(Field::DEPTH_INTRINSICS);
     binWrite(depth.f, depth.cx, depth.cy);
+
+    if (!calibration.rmat.empty())
+    {
+        binWrite(Field::EXTRINSICS_RMAT);
+        binWrite(calibration.rmat);
+    }
+
+    if (!calibration.tvec.empty())
+    {
+        binWrite(Field::EXTRINSICS_TVEC);
+        binWrite(calibration.tvec);
+    }
 
     writeField(Field::COLOR_FORMAT, colorFormat);
     writeField(Field::DEPTH_FORMAT, depthFormat);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <opencv2/core.hpp>
+
 
 class CameraParams
 {
@@ -27,4 +29,11 @@ public:
 public:
     float f, cx, cy;
     int w, h;
+};
+
+
+struct Calibration
+{
+    cv::Mat rmat;
+    cv::Mat tvec;  // in meters
 };

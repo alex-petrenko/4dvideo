@@ -24,6 +24,13 @@ private:
         out.write((const char *)&val, sizeof(val));
     }
 
+    // specialization for cv::Mat
+    template<>
+    void binWrite(cv::Mat m)
+    {
+        out.write((const char *)m.data, m.total() * m.elemSize());
+    }
+
     template<typename T, typename... Args>
     void binWrite(T val, Args&&... args)
     {
