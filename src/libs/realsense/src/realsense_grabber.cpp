@@ -132,11 +132,24 @@ void RealsenseGrabber::init()
     const auto depthF = device->QueryDepthFocalLength().x;
     const auto depthCenter = device->QueryDepthPrincipalPoint();
 
+    // find rotation and translation transformation between color and depth cameras
+    PXCProjection *projection = device->CreateProjection();
+    PXCCalibration *calib = projection->QueryInstance<PXCCalibration>();
+    RealSense::StreamCalibration colorStreamCalibration;
+    RealSense::StreamTransform extrinsics;
+    calib->QueryStreamProjectionParameters(RealSense::StreamType::STREAM_TYPE_COLOR, &colorStreamCalibration, &extrinsics);
+    projection->Release();
+
     CameraParams colorCamera(colorF, colorCenter.x, colorCenter.y, colorW, colorH);
     CameraParams depthCamera(depthF, depthCenter.x, depthCenter.y, depthW, depthH);
     SensorManager &sensorManager = appState().getSensorManager();
     sensorManager.setColorParams(colorCamera, ColorDataFormat::BGR);
     sensorManager.setDepthParams(depthCamera, DepthDataFormat::UNSIGNED_16BIT_MM);
+
+    TLOG(INFO) << extrinsics.translation[0] << " " << extrinsics.translation[1] << " " << extrinsics.translation[2];
+    for (int i = 0; i < 3; ++i)
+        TLOG(INFO) << extrinsics.rotation[i][0] << " " << extrinsics.rotation[i][1] << " " << extrinsics.rotation[i][2];
+
     sensorManager.setInitialized();
 }
 

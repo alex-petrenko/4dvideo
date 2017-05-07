@@ -228,7 +228,7 @@ public:
 
     void fillPoints(const cv::Mat &depth)
     {
-        const uint16_t minDepth = 200, maxDepth = 1200;
+        const uint16_t minDepth = 200, maxDepth = 2200;
         for (int i = 0; i < depth.rows; i += 2)
         {
             const short scaleI = short(scale * i);
@@ -270,10 +270,12 @@ public:
         {
             int iImg, jImg;
             uint16_t d;
+            const cv::Point3f translation{ -58.7298f / 1000, 0.0619417f / 1000, -0.380207f / 1000};  // TODO
             for (size_t i = 0; i < cloud.size(); ++i)
             {
                 float u = 0, v = 0;
-                if (project3dPointTo2d(cloud[i], colorCam, iImg, jImg, d))
+                const cv::Point3f pointColorSpace = cloud[i] + translation;
+                if (project3dPointTo2d(pointColorSpace, colorCam, iImg, jImg, d))
                 {
                     // u - horizontal texture coordinate, v - vertical
                     u = float(jImg) / colorCam.w;

@@ -8,8 +8,15 @@
 #include <realsense/realsense_grabber.hpp>
 
 
-int main()
+int main(int argc, char *argv[])
 {
+    const int numArgs = 2;
+    if (argc != numArgs)
+        TLOG(FATAL) << "Expected " << numArgs << " arguments, got " << argc;
+
+    int arg = 1;
+    const std::string datasetPath(argv[arg++]);
+
     CancellationToken cancellationToken;
     FrameQueue writerQueue, visualizerQueue;
 
@@ -24,13 +31,14 @@ int main()
 
     std::thread writerThread([&]()
     {
-        DatasetWriter writer(R"(C:\temp\tst\dataset.4dv)", writerQueue, cancellationToken);
+        DatasetWriter writer(datasetPath, writerQueue, cancellationToken);
         writer.init();
         writer.run();
     });
 
     // visualizer works with OpenCV GUI, so it's better to keep it on main thread
     DataVisualizer visualizer(visualizerQueue, cancellationToken);
+    visualizer.init();
     visualizer.run();
     
     writerThread.join();
