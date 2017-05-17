@@ -23,9 +23,6 @@ using namespace std::chrono_literals;
 namespace
 {
 
-constexpr int targetW = 640;
-
-
 // pointer to active Player object for GLFW callbacks
 Player::PlayerImpl *activePlayer = nullptr;
 
@@ -73,21 +70,6 @@ const char *fragmentShader =
 "    color = texture(textureSampler, uv).rgb;"
 "}";
 
-
-struct Triangle3D  // <-- temporary slow version, should replace with indexed mode
-{
-    cv::Point3f p1, p2, p3;
-
-    cv::Point3f a() const { return p2 - p1; }
-    cv::Point3f b() const { return p3 - p2; }
-    cv::Point3f c() const { return p1 - p3; }
-};
-
-struct TriangleUV
-{
-    cv::Point2f p1, p2, p3;
-};
-
 }
 
 
@@ -98,9 +80,6 @@ class Player::PlayerImpl
 public:
     PlayerImpl(Player &parent)
         : parent(parent)
-        , triangles3D(maxNumTriangles)
-        , trianglesNormals(maxNumTriangles)
-        , trianglesUv(maxNumTriangles)
     {
     }
 
@@ -113,18 +92,11 @@ public:
     void init()
     {
         const SensorManager &sensorManager = appState().getSensorManager();
-        ColorDataFormat colorFormat;
         DepthDataFormat depthFormat;
-        sensorManager.getColorParams(colorCam, colorFormat);
         sensorManager.getDepthParams(depthCam, depthFormat);
-        calibration = sensorManager.getCalibration();
-        scale = float(targetW) / depthCam.w;
-
-        TLOG(INFO) << "Scale input depth by a factor of: " << scale;
-
+        float scale = float(targetScreenWidth) / depthCam.w;
         depthCam.scale(scale);
-        screenW = depthCam.w;
-        screenH = depthCam.h;
+        screenW = depthCam.w, screenH = depthCam.h;
 
         if (!glfwInit())
             TLOG(FATAL) << "Could not init glfw!";
@@ -196,22 +168,30 @@ public:
 
     bool loopBody()
     {
-        FrameQueue &queue = parent.q;
+        auto &queue = parent.q;
 
         if (!currentFrame)
             queue.pop(currentFrame, 10);
 
         if (currentFrame)
         {
-            if (currentFrame->frameNumber < lastPlayedFrame)
+            if (currentFrame->frame2D->frameNumber < lastPlayedFrame)
             {
                 // beginning of dataset!
                 playbackStarted = std::chrono::system_clock::now();
-                firstFrameTimestamp = currentFrame->dTimestamp;
+                firstFrameTimestamp = currentFrame->frame2D->dTimestamp;
             }
 
             if (canPlayCurrentFrame())
-                setupNewFrame();
+            {
+                lastPlayedFrame = currentFrame->frame2D->frameNumber;
+                frameToDraw = currentFrame;
+
+                if (!meanPointCalculated)
+                    modelCenter = meanPoint(currentFrame->cloud), meanPointCalculated = true;
+
+                currentFrame.reset();
+            }
         }
 
         draw();
@@ -226,127 +206,9 @@ public:
         if (!currentFrame)
             return false;
 
-        const auto targetPlaybackTimeUs = double(currentFrame->dTimestamp - firstFrameTimestamp);
+        const auto targetPlaybackTimeUs = double(currentFrame->frame2D->dTimestamp - firstFrameTimestamp);
         const auto passedTimeUs = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - playbackStarted).count();
         return passedTimeUs >= targetPlaybackTimeUs;
-    }
-
-    void fillPoints(const cv::Mat &depth)
-    {
-        const uint16_t minDepth = 200, maxDepth = 2200;
-        for (int i = 0; i < depth.rows; i += 2)
-        {
-            const short scaleI = short(scale * i);
-            for (int j = 0; j < depth.cols; j += 2)
-            {
-                const uint16_t d = depth.at<uint16_t>(i, j);
-                if (d > minDepth && d < maxDepth && points.size() < std::numeric_limits<short>::max())
-                {
-                    const short scaleJ = short(scale * j);
-                    points.emplace_back(scaleI, scaleJ);
-                    cloud.emplace_back(project2dPointTo3d(scaleI, scaleJ, d, depthCam));
-                }
-            }
-        }
-    }
-
-    void fillPoints(const std::vector<cv::Point3f> &frameCloud)
-    {
-        int iImg, jImg;
-        uint16_t d;
-        for (const auto &p : frameCloud)
-            if (project3dPointTo2d(p, depthCam, iImg, jImg, d))
-            {
-                points.emplace_back(iImg, jImg);
-                cloud.emplace_back(p);
-            }
-    }
-
-    void setupNewFrame()
-    {
-        cloud.clear(), points.clear(), uv.clear();
-
-        if (!currentFrame->depth.empty())
-            fillPoints(currentFrame->depth);
-        else
-            fillPoints(currentFrame->cloud);
-
-        // generate uv coordinates by reprojecting 3D points onto color image plane
-        {
-            int iImg, jImg;
-            uint16_t d;
-            const cv::Point3f *translation = reinterpret_cast<cv::Point3f *>(calibration.tvec.data);
-            for (size_t i = 0; i < cloud.size(); ++i)
-            {
-                float u = 0, v = 0;
-                const cv::Point3f pointColorSpace = cloud[i] + *translation;
-                if (project3dPointTo2d(pointColorSpace, colorCam, iImg, jImg, d))
-                {
-                    // u - horizontal texture coordinate, v - vertical
-                    u = float(jImg) / colorCam.w;
-                    v = float(iImg) / colorCam.h;
-                }
-
-                uv.emplace_back(u, v);
-            }
-        }
-
-        std::vector<short> indexMap(points.size());
-        delaunay(points, indexMap);
-        delaunay.generateTriangles();
-        delaunay.getTriangles(triangles, numTriangles);
-
-        TLOG(INFO) << "Num points: " << points.size() << " num triangles: " << numTriangles;
-
-        const float sideLengthThreshold = 0.075f;  // in meters
-        const float zThreshold = 0.06f;
-
-        int j = 0;
-        for (int i = 0; i < numTriangles; ++i)
-        {
-            Triangle3D &t3d = triangles3D[j];
-            TriangleUV &tuv = trianglesUv[j];
-            const Triangle &t = triangles[i];
-
-            t3d.p1 = cloud[indexMap[t.p1]];
-            t3d.p2 = cloud[indexMap[t.p2]];
-            t3d.p3 = cloud[indexMap[t.p3]];
-
-            tuv.p1 = uv[indexMap[t.p1]];
-            tuv.p2 = uv[indexMap[t.p2]];
-            tuv.p3 = uv[indexMap[t.p3]];
-
-            float maxZ = t3d.p1.z;
-            maxZ = std::max(maxZ, t3d.p2.z);
-            maxZ = std::max(maxZ, t3d.p3.z);
-            float minZ = t3d.p1.z;
-            minZ = std::min(minZ, t3d.p2.z);
-            minZ = std::min(minZ, t3d.p3.z);
-            if (maxZ - minZ > zThreshold)
-                continue;
-
-            const float a = float(cv::norm(t3d.a()));
-            if (a > sideLengthThreshold) continue;
-            const float b = float(cv::norm(t3d.b()));
-            if (b > sideLengthThreshold) continue;
-            const float c = float(cv::norm(t3d.c()));
-            if (c > sideLengthThreshold) continue;
-
-            const cv::Point3f n = triNormal(t3d.p1, t3d.p2, t3d.p3);
-            // all three points have same normal TODO: optimize
-            trianglesNormals[j].p1 = trianglesNormals[j].p2 = trianglesNormals[j].p3 = n;
-
-            ++j;
-        }
-
-        num3DTriangles = j;
-
-        if (!meanPointCalculated)
-            modelCenter = meanPoint(cloud), meanPointCalculated = true;
-
-        lastPlayedFrame = currentFrame->frameNumber;
-        frameToDraw = currentFrame;
-        currentFrame.reset();
     }
 
     void computeMatricesFromInputs()
@@ -421,16 +283,19 @@ public:
     {
         if (frameToDraw)
         {
+            num3DTriangles = frameToDraw->num3DTriangles;
+            auto &frame2D = frameToDraw->frame2D;
+
             glBindVertexArray(vertexArrayID);
             glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), triangles3D.data(), GL_DYNAMIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), frameToDraw->triangles3D.data(), GL_DYNAMIC_DRAW);
             glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
-            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), trianglesNormals.data(), GL_DYNAMIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), frameToDraw->trianglesNormals.data(), GL_DYNAMIC_DRAW);
             glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
-            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(TriangleUV), trianglesUv.data(), GL_DYNAMIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(TriangleUV), frameToDraw->trianglesUv.data(), GL_DYNAMIC_DRAW);
 
             // loading texture data to GPU
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameToDraw->color.cols, frameToDraw->color.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, frameToDraw->color.data);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frame2D->color.cols, frame2D->color.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, frame2D->color.data);
             glGenerateMipmap(GL_TEXTURE_2D);
 
             frameToDraw.reset();
@@ -477,7 +342,7 @@ public:
 
         glUniformMatrix4fv(transformUniformID, 1, GL_FALSE, glm::value_ptr(mvp));
 
-        glDrawArrays(GL_TRIANGLES, 0, 3 * numTriangles);
+        glDrawArrays(GL_TRIANGLES, 0, 3 * num3DTriangles);
 
         glDisableVertexAttribArray(0);
     }
@@ -488,7 +353,6 @@ private:
     // GLFW
 
     GLFWwindow *window = nullptr;
-    int screenW = 0, screenH = 0;
 
     // input
 
@@ -515,24 +379,13 @@ private:
     int64_t firstFrameTimestamp = 0;
     std::chrono::time_point<std::chrono::system_clock> playbackStarted;
 
-    std::shared_ptr<Frame> currentFrame, frameToDraw;
-    std::vector<PointIJ> points;
-    std::vector<cv::Point3f> cloud;
-    std::vector<cv::Point2f> uv;
-
-    std::vector<Triangle3D> triangles3D, trianglesNormals;
-    std::vector<TriangleUV> trianglesUv;
-
-    Triangle *triangles = nullptr;
-    int numTriangles = 0, num3DTriangles = 0;
-
-    Delaunay delaunay;
+    std::shared_ptr<MeshFrame> currentFrame, frameToDraw;
+    int num3DTriangles = 0;
 
     // camera and screen
 
-    CameraParams colorCam, depthCam;
-    Calibration calibration;
-    float scale;
+    CameraParams depthCam;
+    int screenW = 0, screenH = 0;
 };
 
 
@@ -555,8 +408,8 @@ void glfwScrollCallback(GLFWwindow *, double, double yScroll)
 }
 
 
-Player::Player(FrameQueue &q, CancellationToken &cancellationToken)
-    : FrameConsumer(q, cancellationToken)
+Player::Player(MeshFrameQueue &q, CancellationToken &cancellationToken)
+    : MeshFrameConsumer(q, cancellationToken)
 {
     data = std::make_unique<PlayerImpl>(*this);
     activePlayer = data.get();

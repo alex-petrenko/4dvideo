@@ -20,14 +20,11 @@ public:
     {
     }
 
-    virtual void run() = 0;
-
     virtual void addQueue(QueueType *queue)
     {
         queues.push_back(queue);
     }
 
-protected:
     virtual void produce(Item item)
     {
         for (auto queue : queues)

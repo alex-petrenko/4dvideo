@@ -41,7 +41,6 @@ protected:
         return true;
     }
 
-private:
     virtual void process(Item &)
     {
     }

@@ -1,9 +1,11 @@
 #pragma once
 
-#include <3dvideo/frame.hpp>
+#include <3dvideo/mesh_frame.hpp>
 
 
-class Player : public FrameConsumer
+constexpr int targetScreenWidth = 640;
+
+class Player : public MeshFrameConsumer
 {
 public:
     /// Private implementation to hide some OpenGL headers.
@@ -11,7 +13,7 @@ public:
     friend class PlayerImpl;
 
 public:
-    Player(FrameQueue &q, CancellationToken &cancellationToken);
+    Player(MeshFrameQueue &q, CancellationToken &cancellationToken);
     virtual ~Player();
 
     virtual void init();
