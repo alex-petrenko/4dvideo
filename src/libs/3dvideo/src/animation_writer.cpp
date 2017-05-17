@@ -19,11 +19,16 @@ AnimationWriter::~AnimationWriter()
 
 void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
 {
-    if (frame->frame2D->frameNumber < lastWrittenFrame)
+    return;
+
+    if (frame->frame2D->dTimestamp == firstFrameTimestamp)
     {
         timeframe.close();
         return;
     }
+
+    if (lastWrittenFrame == -1)
+        firstFrameTimestamp = frame->frame2D->dTimestamp;
 
     std::ostringstream fileName;
     fileName << std::setw(5) << std::setfill('0') << frame->frame2D->frameNumber << "_cloud.ply";
@@ -31,6 +36,9 @@ void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
     const std::string filePath = pathJoin(outputPath, fileName.str());
     saveBinaryPly(filePath, &frame->cloud);
 
-    timeframe << "0.05 " << fileName.str() << '\n';
+    auto timeDeltaUs = float(frame->frame2D->dTimestamp - firstFrameTimestamp) / 1000000;
+    timeDeltaUs = std::max(timeDeltaUs, 0.03f);
+
+    timeframe << timeDeltaUs << " " << fileName.str() << '\n';
     lastWrittenFrame = frame->frame2D->frameNumber;
 }

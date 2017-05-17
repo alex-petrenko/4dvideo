@@ -24,13 +24,18 @@ struct MeshFrame
 {
     std::shared_ptr<Frame> frame2D;
 
-    std::vector<PointIJ> points;
     std::vector<cv::Point3f> cloud;
+
+    bool indexedMode = false;
+
+    // indexed mode
+    std::vector<Triangle> triangles;
+    std::vector<cv::Point3f> normals;
     std::vector<cv::Point2f> uv;
 
+    // array mode
     std::vector<Triangle3D> triangles3D, trianglesNormals;
     std::vector<TriangleUV> trianglesUv;
-
     int num3DTriangles;
 };
 

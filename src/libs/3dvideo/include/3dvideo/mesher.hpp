@@ -22,6 +22,9 @@ private:
     void fillPoints(const cv::Mat &depth, std::vector<PointIJ> &points, std::vector<cv::Point3f> &cloud) const;
     void fillPoints(const std::vector<cv::Point3f> &frameCloud, std::vector<PointIJ> &points, std::vector<cv::Point3f> &cloud) const;
 
+    void fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTriangles);
+    void fillDataIndexedMode(MeshFrame &frame, Triangle *triangles, int numTriangles);
+
 private:
     MeshFrameProducer &output;
 

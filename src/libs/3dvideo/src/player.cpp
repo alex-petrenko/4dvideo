@@ -132,11 +132,12 @@ public:
         glBindVertexArray(vertexArrayID);
 
         glGenBuffers(1, &vertexBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        //glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
         glGenBuffers(1, &normalBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+        //glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
         glGenBuffers(1, &uvBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
+        //glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
+        glGenBuffers(1, &indexBuffer);
 
         transformUniformID = glGetUniformLocation(program, "transform");
 
@@ -283,16 +284,35 @@ public:
     {
         if (frameToDraw)
         {
-            num3DTriangles = frameToDraw->num3DTriangles;
-            auto &frame2D = frameToDraw->frame2D;
+            indexedMode = frameToDraw->indexedMode;
 
+            auto &frame2D = frameToDraw->frame2D;
             glBindVertexArray(vertexArrayID);
-            glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), frameToDraw->triangles3D.data(), GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
-            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(Triangle3D), frameToDraw->trianglesNormals.data(), GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
-            glBufferData(GL_ARRAY_BUFFER, num3DTriangles * sizeof(TriangleUV), frameToDraw->trianglesUv.data(), GL_DYNAMIC_DRAW);
+
+            if (indexedMode)
+            {
+                numElements = GLsizei(frameToDraw->triangles.size());
+
+                glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+                glBufferData(GL_ARRAY_BUFFER, frameToDraw->cloud.size() * sizeof(cv::Point3f), frameToDraw->cloud.data(), GL_DYNAMIC_DRAW);
+                glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+                glBufferData(GL_ARRAY_BUFFER, frameToDraw->normals.size() * sizeof(cv::Point3f), frameToDraw->normals.data(), GL_DYNAMIC_DRAW);
+                glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
+                glBufferData(GL_ARRAY_BUFFER, frameToDraw->uv.size() * sizeof(cv::Point2f), frameToDraw->uv.data(), GL_DYNAMIC_DRAW);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, frameToDraw->triangles.size() * sizeof(Triangle), frameToDraw->triangles.data(), GL_DYNAMIC_DRAW);
+            }
+            else
+            {
+                numElements = GLsizei(frameToDraw->num3DTriangles);
+
+                glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+                glBufferData(GL_ARRAY_BUFFER, numElements * sizeof(Triangle3D), frameToDraw->triangles3D.data(), GL_DYNAMIC_DRAW);
+                glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+                glBufferData(GL_ARRAY_BUFFER, numElements * sizeof(Triangle3D), frameToDraw->trianglesNormals.data(), GL_DYNAMIC_DRAW);
+                glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
+                glBufferData(GL_ARRAY_BUFFER, numElements * sizeof(TriangleUV), frameToDraw->trianglesUv.data(), GL_DYNAMIC_DRAW);
+            }
 
             // loading texture data to GPU
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frame2D->color.cols, frame2D->color.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, frame2D->color.data);
@@ -340,9 +360,15 @@ public:
             (void*)0            // array buffer offset
         );
 
+        if (indexedMode)
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+
         glUniformMatrix4fv(transformUniformID, 1, GL_FALSE, glm::value_ptr(mvp));
 
-        glDrawArrays(GL_TRIANGLES, 0, 3 * num3DTriangles);
+        if (indexedMode)
+            glDrawElements(GL_TRIANGLES, 3 * numElements, GL_UNSIGNED_SHORT, 0);
+        else
+            glDrawArrays(GL_TRIANGLES, 0, 3 * numElements);
 
         glDisableVertexAttribArray(0);
     }
@@ -363,7 +389,7 @@ private:
     std::shared_ptr<ShaderLoader> shaderLoader;
     GLint program;
     GLuint vertexArrayID;
-    GLuint vertexBuffer, normalBuffer, uvBuffer;
+    GLuint vertexBuffer, normalBuffer, uvBuffer, indexBuffer;
     GLint transformUniformID;
     GLuint texture;
 
@@ -373,6 +399,9 @@ private:
     bool meanPointCalculated = false;
     cv::Point3f modelCenter;
 
+    bool indexedMode = false;
+    GLsizei numElements = 0;
+
     // player state
 
     int lastPlayedFrame = std::numeric_limits<int>::max();
@@ -380,8 +409,7 @@ private:
     std::chrono::time_point<std::chrono::system_clock> playbackStarted;
 
     std::shared_ptr<MeshFrame> currentFrame, frameToDraw;
-    int num3DTriangles = 0;
-
+    
     // camera and screen
 
     CameraParams depthCam;

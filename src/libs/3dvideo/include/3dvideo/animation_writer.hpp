@@ -17,4 +17,5 @@ private:
     std::ofstream timeframe;
 
     int lastWrittenFrame = -1;
+    int64_t firstFrameTimestamp = -1;
 };

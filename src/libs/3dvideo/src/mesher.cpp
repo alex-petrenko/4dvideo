@@ -66,75 +66,29 @@ void Mesher::fillPoints(const std::vector<cv::Point3f> &frameCloud, std::vector<
         }
 }
 
-void Mesher::process(std::shared_ptr<Frame> &frame2D)
+void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTriangles)
 {
-    tprof().startTimer("mesher_frame");
-    auto meshFrame = std::make_shared<MeshFrame>();
-    meshFrame->frame2D = frame2D;
-
-    auto &cloud = meshFrame->cloud;
-    auto &points = meshFrame->points;
-    auto &uv = meshFrame->uv;
-
-    if (!frame2D->depth.empty())
-        fillPoints(frame2D->depth, points, cloud);
-    else
-        fillPoints(frame2D->cloud, points, cloud);
-
-    // generate uv coordinates by reprojecting 3D points onto color image plane
-    {
-        int iImg, jImg;
-        uint16_t d;
-        const cv::Point3f *translation = reinterpret_cast<cv::Point3f *>(calibration.tvec.data);
-        for (size_t i = 0; i < cloud.size(); ++i)
-        {
-            float u = 0, v = 0;
-            const cv::Point3f pointColorSpace = cloud[i] + *translation;
-            if (project3dPointTo2d(pointColorSpace, colorCam, iImg, jImg, d))
-            {
-                // u - horizontal texture coordinate, v - vertical
-                u = float(jImg) / colorCam.w;
-                v = float(iImg) / colorCam.h;
-            }
-
-            uv.emplace_back(u, v);
-        }
-    }
-
-    tprof().startTimer("triangulation");
-    std::vector<short> indexMap(points.size());
-    delaunay(points, indexMap);
-    delaunay.generateTriangles();
-
-    Triangle *triangles = nullptr;
-    int numTriangles = 0;
-    delaunay.getTriangles(triangles, numTriangles);
-    tprof().stopTimer("triangulation");
-
-    tprof().startTimer("triangles");
-
     const float sideLengthThreshold = 0.075f;  // in meters
     const float zThreshold = 0.06f;
 
-    meshFrame->triangles3D.resize(numTriangles);
-    meshFrame->trianglesUv.resize(numTriangles);
-    meshFrame->trianglesNormals.resize(numTriangles);
+    frame.triangles3D.resize(numTriangles);
+    frame.trianglesUv.resize(numTriangles);
+    frame.trianglesNormals.resize(numTriangles);
 
     int j = 0;
     for (int i = 0; i < numTriangles; ++i)
     {
-        Triangle3D &t3d = meshFrame->triangles3D[j];
-        TriangleUV &tuv = meshFrame->trianglesUv[j];
-        Triangle3D &tn = meshFrame->trianglesNormals[j];
+        Triangle3D &t3d = frame.triangles3D[j];
+        TriangleUV &tuv = frame.trianglesUv[j];
+        Triangle3D &tn = frame.trianglesNormals[j];
         const Triangle &t = triangles[i];
 
-        t3d.p1 = cloud[indexMap[t.p1]];
-        t3d.p2 = cloud[indexMap[t.p2]];
-        t3d.p3 = cloud[indexMap[t.p3]];
-
-        tuv.p1 = uv[indexMap[t.p1]];
-        tuv.p2 = uv[indexMap[t.p2]];
-        tuv.p3 = uv[indexMap[t.p3]];
+        t3d.p1 = frame.cloud[t.p1];
+        t3d.p2 = frame.cloud[t.p2];
+        t3d.p3 = frame.cloud[t.p3];
+        tuv.p1 = frame.uv[t.p1];
+        tuv.p2 = frame.uv[t.p2];
+        tuv.p3 = frame.uv[t.p3];
 
         float maxZ = t3d.p1.z;
         maxZ = std::max(maxZ, t3d.p2.z);
@@ -164,9 +118,75 @@ void Mesher::process(std::shared_ptr<Frame> &frame2D)
         ++j;
     }
 
-    tprof().stopTimer("triangles");
+    frame.num3DTriangles = j;
+}
+
+void Mesher::fillDataIndexedMode(MeshFrame &frame, Triangle *triangles, int numTriangles)
+{
+    frame.triangles = std::vector<Triangle>(triangles, triangles + numTriangles);
+    frame.normals.resize(frame.cloud.size());
+}
+
+void Mesher::process(std::shared_ptr<Frame> &frame2D)
+{
+    tprof().startTimer("mesher_frame");
+    auto meshFrame = std::make_shared<MeshFrame>();
+    meshFrame->frame2D = frame2D;
+
+    auto &cloud = meshFrame->cloud;
+    auto &uv = meshFrame->uv;
+    std::vector<PointIJ> points;
+
+    if (!frame2D->depth.empty())
+        fillPoints(frame2D->depth, points, cloud);
+    else
+        fillPoints(frame2D->cloud, points, cloud);
+
+    tprof().startTimer("triangulation");
+    std::vector<short> indexMap(points.size());
+    delaunay(points, indexMap);
+    delaunay.generateTriangles();
+
+    Triangle *triangles = nullptr;
+    int numTriangles = 0;
+    delaunay.getTriangles(triangles, numTriangles);
+
+    std::vector<cv::Point3f> sortedCloud(points.size());
+    for (size_t i = 0; i < sortedCloud.size(); ++i)
+        sortedCloud[i] = cloud[indexMap[i]];
+    cloud.swap(sortedCloud);
+    tprof().stopTimer("triangulation");
+
+    // generate uv coordinates by reprojecting 3D points onto color image plane
+    {
+        int iImg, jImg;
+        uint16_t d;
+        const cv::Point3f *translation = reinterpret_cast<cv::Point3f *>(calibration.tvec.data);
+        for (size_t i = 0; i < cloud.size(); ++i)
+        {
+            float u = 0, v = 0;
+            const cv::Point3f pointColorSpace = cloud[i] + *translation;
+            if (project3dPointTo2d(pointColorSpace, colorCam, iImg, jImg, d))
+            {
+                // u - horizontal texture coordinate, v - vertical
+                u = float(jImg) / colorCam.w;
+                v = float(iImg) / colorCam.h;
+            }
+
+            uv.emplace_back(u, v);
+        }
+    }
+
+    tprof().startTimer("meshing");
+
+    meshFrame->indexedMode = true;
+    if (meshFrame->indexedMode)
+        fillDataIndexedMode(*meshFrame, triangles, numTriangles);
+    else
+        fillDataArrayMode(*meshFrame, triangles, numTriangles);
+
+    tprof().stopTimer("meshing");
     tprof().stopTimer("mesher_frame");
 
-    meshFrame->num3DTriangles = j;
     output.produce(meshFrame);
 }
