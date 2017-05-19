@@ -13,9 +13,12 @@ protected:
     void process(std::shared_ptr<MeshFrame> &item) override;
 
 private:
+    bool finished = false;
+
     std::string outputPath;
     std::ofstream timeframe;
 
     int lastWrittenFrame = -1;
-    int64_t firstFrameTimestamp = -1;
+    int64_t lastFrameTimestamp = -1;
+    std::string lastMeshFilename;
 };

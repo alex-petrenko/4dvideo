@@ -212,12 +212,18 @@ bool loadBinaryPly(const std::string &filename,
     return true;
 }
 
-std::string plyHeader(const std::vector<cv::Point3f> *vertices)
+std::string plyHeader(const std::vector<cv::Point3f> *vertices,
+                      const std::vector<Triangle> *triangles,
+                      const std::vector<cv::Point2f> *uv,
+                      const std::string *textureFilename)
 {
     std::ostringstream header;
     header << "ply\n";
     header << "format binary_little_endian 1.0\n";
     header << "comment Physical units: meters\n";
+
+    if (textureFilename)
+        header << "comment TextureFile " << *textureFilename << "\n";
 
     if (vertices)
     {
@@ -226,19 +232,58 @@ std::string plyHeader(const std::vector<cv::Point3f> *vertices)
             header << "property float " << c << "\n";
     }
 
+    if (triangles)
+    {
+        header << "element face " << triangles->size() << "\n";
+        header << "property list uchar int vertex_indices\n";
+        if (uv)
+            header << "property list uchar float texcoord\n";
+    }
+
     header << "end_header\n";
     return header.str();
 }
 
 /// Disclaimer: this is a very limited version of binary writer, made just for debugging.
-bool saveBinaryPly(const std::string &filename, const std::vector<cv::Point3f> *vertices)
+bool saveBinaryPly(const std::string &filename,
+                   const std::vector<cv::Point3f> *vertices,
+                   const std::vector<Triangle> *triangles,
+                   const std::vector<cv::Point2f> *uv,
+                   const std::string *textureFilename)
 {
     std::ofstream ply{ filename, std::ios::binary };
-    const auto header = plyHeader(vertices);
+    const auto header = plyHeader(vertices, triangles, uv, textureFilename);
     ply.write(header.c_str(), header.length());
 
     if (ply && vertices)
         ply.write((const char *)vertices->data(), vertices->size() * sizeof(cv::Point3f));
+
+    if (ply && triangles)
+    {
+        constexpr char numSides = 3, numUv = numSides * 2;
+        std::vector<cv::Point2f> faceUv(numSides);
+        for (size_t i = 0; i < triangles->size(); ++i)
+        {
+            ply.write(&numSides, sizeof(numSides));
+            const Triangle &t = (*triangles)[i];
+
+            for (size_t j = 0; j < numSides; ++j)
+            {
+                const uint16_t *p = &t.p1 + j;
+                const int idx = *p;
+                ply.write((char *)&idx, sizeof(idx));
+
+                if (uv)
+                    faceUv[j] = (*uv)[idx];
+            }
+
+            if (uv)
+            {
+                ply.write(&numUv, sizeof(numUv));
+                ply.write((const char *)faceUv.data(), faceUv.size() * sizeof(cv::Point2f));
+            }
+        }
+    }
 
     return bool(ply);
 }

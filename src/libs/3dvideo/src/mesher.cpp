@@ -10,6 +10,35 @@
 
 using namespace std::chrono_literals;
 
+namespace
+{
+
+bool filterTriangle(const cv::Point3f &p1, const cv::Point3f &p2, const cv::Point3f &p3)
+{
+    constexpr float sideLengthThreshold = 0.075f;  // in meters
+    constexpr float zThreshold = 0.06f;
+
+    float maxZ = p1.z;
+    maxZ = std::max(maxZ, p2.z);
+    maxZ = std::max(maxZ, p3.z);
+    float minZ = p1.z;
+    minZ = std::min(minZ, p2.z);
+    minZ = std::min(minZ, p3.z);
+    if (maxZ - minZ > zThreshold)
+        return true;
+
+    const float a = float(cv::norm(p2 - p1));
+    if (a > sideLengthThreshold) return true;
+    const float b = float(cv::norm(p3 - p2));
+    if (b > sideLengthThreshold) return true;
+    const float c = float(cv::norm(p1 - p3));
+    if (c > sideLengthThreshold) return true;
+
+    return false;
+}
+
+}
+
 
 Mesher::Mesher(FrameQueue &inputQueue, MeshFrameProducer &output, CancellationToken &cancellationToken)
     : FrameConsumer(inputQueue, cancellationToken)
@@ -37,14 +66,14 @@ void Mesher::init()
 
 void Mesher::fillPoints(const cv::Mat &depth, std::vector<PointIJ> &points, std::vector<cv::Point3f> &cloud) const
 {
-    const uint16_t minDepth = 200, maxDepth = 1900;
-    for (int i = 0; i < depth.rows; i += 1)
+    const uint16_t minDepth = 200, maxDepth = 1200;
+    for (int i = 0; i < depth.rows; i += 2)
     {
         const short scaleI = short(scale * i);
-        for (int j = 0; j < depth.cols; j += 1)
+        for (int j = 0; j < depth.cols; j += 2)
         {
             const uint16_t d = depth.at<uint16_t>(i, j);
-            if (d > minDepth && d < maxDepth && points.size() < std::numeric_limits<short>::max())
+            if (d > minDepth && d < maxDepth && points.size() < std::numeric_limits<short>::max() - 10)
             {
                 const short scaleJ = short(scale * j);
                 points.emplace_back(scaleI, scaleJ);
@@ -68,9 +97,6 @@ void Mesher::fillPoints(const std::vector<cv::Point3f> &frameCloud, std::vector<
 
 void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTriangles)
 {
-    const float sideLengthThreshold = 0.075f;  // in meters
-    const float zThreshold = 0.06f;
-
     frame.triangles3D.resize(numTriangles);
     frame.trianglesUv.resize(numTriangles);
     frame.trianglesNormals.resize(numTriangles);
@@ -90,21 +116,8 @@ void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTri
         tuv.p2 = frame.uv[t.p2];
         tuv.p3 = frame.uv[t.p3];
 
-        float maxZ = t3d.p1.z;
-        maxZ = std::max(maxZ, t3d.p2.z);
-        maxZ = std::max(maxZ, t3d.p3.z);
-        float minZ = t3d.p1.z;
-        minZ = std::min(minZ, t3d.p2.z);
-        minZ = std::min(minZ, t3d.p3.z);
-        if (maxZ - minZ > zThreshold)
+        if (filterTriangle(t3d.p1, t3d.p2, t3d.p3))
             continue;
-
-        const float a = float(cv::norm(t3d.a()));
-        if (a > sideLengthThreshold) continue;
-        const float b = float(cv::norm(t3d.b()));
-        if (b > sideLengthThreshold) continue;
-        const float c = float(cv::norm(t3d.c()));
-        if (c > sideLengthThreshold) continue;
 
         // TODO: need normals only when there's no texture
         const bool needNormals = false;
@@ -123,8 +136,19 @@ void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTri
 
 void Mesher::fillDataIndexedMode(MeshFrame &frame, Triangle *triangles, int numTriangles)
 {
-    frame.triangles = std::vector<Triangle>(triangles, triangles + numTriangles);
     frame.normals.resize(frame.cloud.size());
+
+    for (int i = 0; i < numTriangles; ++i)
+    {
+        const Triangle &t = triangles[i];
+        const auto &p1 = frame.cloud[t.p1];
+        const auto &p2 = frame.cloud[t.p2];
+        const auto &p3 = frame.cloud[t.p3];
+        if (filterTriangle(p1, p2, p3))
+            continue;
+
+        frame.triangles.emplace_back(t);
+    }
 }
 
 void Mesher::process(std::shared_ptr<Frame> &frame2D)

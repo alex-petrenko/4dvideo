@@ -25,14 +25,14 @@ int main(int argc, char *argv[])
 
     CancellationToken cancellationToken;
     FrameQueue frameQueue(100);
-    MeshFrameQueue playerQueue(10), writerQueue(10);
+    MeshFrameQueue playerQueue(10), writerQueue(200);
 
     std::thread readerThread([&]
     {
         DatasetReader reader(datasetPath, cancellationToken);
         reader.addQueue(&frameQueue);
         reader.init();
-        reader.runLoop();
+        reader.run();
     });
 
     std::thread mesherThread([&]
@@ -60,8 +60,11 @@ int main(int argc, char *argv[])
     player.init();
     player.run();
 
+    cancellationToken.trigger();
+
     readerThread.join();
     mesherThread.join();
+    writerThread.join();
 
     return EXIT_SUCCESS;
 }
