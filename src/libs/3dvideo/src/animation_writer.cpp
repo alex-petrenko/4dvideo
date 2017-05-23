@@ -54,7 +54,7 @@ void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
     saveBinaryPly(pathJoin(outputPath, meshFilename), &points, &frame->triangles, &uv, &textureFilename);
 
     cv::Mat finalTexture;
-    cv::resize(frame->frame2D->color, finalTexture, cv::Size(), 0.5, 0.5);
+    cv::resize(frame->frame2D->color, finalTexture, cv::Size(), 0.25, 0.25);
     cv::imwrite(pathJoin(outputPath, textureFilename), finalTexture);
 
     if (lastWrittenFrame != -1)

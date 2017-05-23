@@ -66,14 +66,13 @@ void Mesher::init()
 
 void Mesher::fillPoints(const cv::Mat &depth, std::vector<PointIJ> &points, std::vector<cv::Point3f> &cloud) const
 {
-    const uint16_t minDepth = 200, maxDepth = 1200;
-    for (int i = 0; i < depth.rows; i += 2)
+    for (int i = 0; i < depth.rows; ++i)
     {
         const short scaleI = short(scale * i);
-        for (int j = 0; j < depth.cols; j += 2)
+        for (int j = 0; j < depth.cols; ++j)
         {
             const uint16_t d = depth.at<uint16_t>(i, j);
-            if (d > minDepth && d < maxDepth && points.size() < std::numeric_limits<short>::max() - 10)
+            if (d > 0 && points.size() < std::numeric_limits<short>::max() - 10)
             {
                 const short scaleJ = short(scale * j);
                 points.emplace_back(scaleI, scaleJ);

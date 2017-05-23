@@ -76,7 +76,7 @@ private:
     {
         const EdgeIdx e1Idx = numEdges, e2Idx = e1Idx + 1;
         numEdges += 2;
-        assert(numEdges < maxNumEdges / 2);
+        assert(numEdges < maxNumEdges * 2 / 3);  // safety margin, might want to allocate bigger buffer if that's exceeded
 
         TriEdge &e1 = E[e1Idx];
         TriEdge &e2 = E[e2Idx];

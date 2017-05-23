@@ -123,6 +123,15 @@ void RealsenseGrabber::init()
     if (!device)
         return;
 
+    for (int profileIdx = 0; ; ++profileIdx)
+    {
+        PXCCapture::Device::StreamProfileSet profiles;
+        const auto status = device->QueryStreamProfileSet(PXCCapture::STREAM_TYPE_DEPTH, profileIdx, &profiles);
+        if (status < PXC_STATUS_NO_ERROR)
+            break;
+        TLOG(INFO) << "Profile idx: " << profileIdx << " depth: " << profiles.depth.imageInfo.width << "x" << profiles.depth.imageInfo.height;
+    }
+
     device->SetColorAutoExposure(true);
     device->SetColorAutoWhiteBalance(true);
     device->SetDSLeftRightAutoExposure(true);

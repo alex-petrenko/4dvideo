@@ -7,7 +7,7 @@
 
 class Mesher : public FrameConsumer
 {
-public:
+private:
     class MesherImpl;
 
 public:
