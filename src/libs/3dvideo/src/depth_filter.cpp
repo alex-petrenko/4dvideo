@@ -1,9 +1,12 @@
+#include <map>
+
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 
 #include <util/util.hpp>
 #include <util/geometry.hpp>
 #include <util/tiny_logger.hpp>
+#include <util/tiny_profiler.hpp>
 
 #include <3dvideo/app_state.hpp>
 #include <3dvideo/depth_filter.hpp>
@@ -32,6 +35,8 @@ void DepthFilter::init()
 
 void DepthFilter::process(std::shared_ptr<Frame> &frame)
 {
+    tprof().startTimer("depth_filter");
+
     const uint16_t minDepth = 500, maxDepth = 1100, purgeR = 3;
     const uint16_t curvatureThresholdMm = 12;
     const cv::Point3f *translation = reinterpret_cast<cv::Point3f *>(calibration.tvec.data);
@@ -70,6 +75,57 @@ void DepthFilter::process(std::shared_ptr<Frame> &frame)
                 }
         }
 
+    int clusterIdx = 1;
+    cv::Mat cluster = cv::Mat::zeros(depth.rows, depth.cols, CV_32SC1);
+    std::queue<PointIJ> queue;
+    std::map<int, int> clusterArea;
+    for (short i = 0; i < depth.rows; ++i)
+        for (short j = 0; j < depth.cols; ++j)
+        {
+            const uint16_t d = depth.at<uint16_t>(i, j);
+            if (!d) continue;
+            if (cluster.at<int>(i, j)) continue;
+
+            cluster.at<int>(i, j) = clusterIdx;
+            ++clusterArea[clusterIdx];
+            queue.push({ i, j });
+
+            while (!queue.empty())
+            {
+                const auto p = queue.front();
+                queue.pop();
+
+                for (short di = -1; di <= 1; ++di)
+                    for (short dj = -1; dj <= 1; ++dj)
+                    {
+                        const short iNear = p.i + di, jNear = p.j + dj;
+                        if (iNear < 0 || iNear >= depth.rows) continue;
+                        if (jNear < 0 || jNear >= depth.cols) continue;
+                        const uint16_t dNear = depth.at<uint16_t>(iNear, jNear);
+                        if (!dNear) continue;
+                        auto &c = cluster.at<int>(iNear, jNear);
+                        if (c) continue;
+
+                        c = clusterIdx;
+                        ++clusterArea[clusterIdx];
+                        queue.push({ iNear, jNear });
+                    }
+            }
+
+            ++clusterIdx;
+        }
+
+    const int depthClusterAreaThreshold = int(depth.rows * depth.cols * 0.0005);  // min 0.05% of the screen
+    for (short i = 0; i < depth.rows; ++i)
+        for (short j = 0; j < depth.cols; ++j)
+        {
+            uint16_t &d = depth.at<uint16_t>(i, j);
+            if (!d) continue;
+            const int c = cluster.at<int>(i, j);
+            if (clusterArea[c] < depthClusterAreaThreshold)
+                d = 0;
+        }
+
     for (int i = 0; i < depth.rows; ++i)
         for (int j = 0; j < depth.cols; ++j)
         {
@@ -93,9 +149,11 @@ void DepthFilter::process(std::shared_ptr<Frame> &frame)
                 filtered.at<uint16_t>(i, j) = 16000;
 
     cv::resize(filtered, filtered, cv::Size(), 2, 2);
-    cv::imshow("tmp", filtered);
+    cv::imshow("filtered", filtered);
     cv::waitKey();
 #endif
+
+    tprof().stopTimer("depth_filter");
 
     output.produce(frame);
 }
