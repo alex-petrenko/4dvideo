@@ -21,3 +21,17 @@ void endianSwap(T *x)
 }
 
 void memcpyStride(char *dst, const char *src, int elemSize, int numElements, int ofs, int stride);
+
+
+template<typename T>
+class Ignore
+{
+public:
+    operator T&()
+    {
+        return obj;
+    }
+
+private:
+    T obj;
+};

@@ -10,13 +10,14 @@
 
 using namespace std::chrono_literals;
 
+
 namespace
 {
 
 bool filterTriangle(const cv::Point3f &p1, const cv::Point3f &p2, const cv::Point3f &p3)
 {
-    constexpr float sideLengthThreshold = 0.075f;  // in meters
-    constexpr float zThreshold = 0.06f;
+    constexpr float sideLengthThreshold = 0.07f;  // in meters
+    constexpr float zThreshold = 0.05f;
 
     float maxZ = p1.z;
     maxZ = std::max(maxZ, p2.z);

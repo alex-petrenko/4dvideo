@@ -37,7 +37,10 @@ void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
         return;
     }
 
-    TLOG(INFO) << frame->frame2D->frameNumber;
+    if (!meanPointCalculated)
+        modelCenter = meanPoint(frame->cloud), meanPointCalculated = true;
+
+    TLOG(INFO) << "timeframe animation, frame #" << frame->frame2D->frameNumber;
 
     std::ostringstream filenamePrefix;
     filenamePrefix << std::setw(5) << std::setfill('0') << frame->frame2D->frameNumber << "_";
@@ -45,7 +48,10 @@ void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
 
     std::vector<cv::Point3f> points(frame->cloud);
     for (size_t i = 0; i < points.size(); ++i)
+    {
+        points[i] -= modelCenter;
         points[i].x *= -1, points[i].y *= -1;
+    }
 
     std::vector<cv::Point2f> uv(frame->uv.size());
     for (size_t i = 0; i < uv.size(); ++i)
