@@ -115,7 +115,7 @@ void DepthFilter::process(std::shared_ptr<Frame> &frame)
             ++clusterIdx;
         }
 
-    const int depthClusterAreaThreshold = int(depth.rows * depth.cols * 0.0005);  // min 0.05% of the screen
+    const int depthClusterAreaThreshold = int(depth.rows * depth.cols * 0.001);  // min 0.1% of the screen
     for (short i = 0; i < depth.rows; ++i)
         for (short j = 0; j < depth.cols; ++j)
         {
@@ -140,6 +140,7 @@ void DepthFilter::process(std::shared_ptr<Frame> &frame)
                 }
         }
 
+#define VISUALIZE_FILTER 0
 #if VISUALIZE_FILTER
     cv::Mat filtered;
     depth.copyTo(filtered);
