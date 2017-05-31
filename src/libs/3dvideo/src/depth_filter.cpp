@@ -37,7 +37,7 @@ void DepthFilter::process(std::shared_ptr<Frame> &frame)
 {
     tprof().startTimer("depth_filter");
 
-    const uint16_t minDepth = 500, maxDepth = 1100, purgeR = 3;
+    const uint16_t minDepth = 500, maxDepth = 2100, purgeR = 3;
     const uint16_t curvatureThresholdMm = 12;
     const cv::Point3f *translation = reinterpret_cast<cv::Point3f *>(calibration.tvec.data);
     cv::Mat &depth = frame->depth;

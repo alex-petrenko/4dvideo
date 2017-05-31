@@ -7,6 +7,7 @@
 
 
 using namespace std::chrono;
+using namespace std::chrono_literals;
 
 
 namespace
@@ -93,7 +94,11 @@ LogMessage::~LogMessage()
     }
 
     if (level == FATAL)
-        abort();
+    {
+        *outStream << "\nExiting due to FATAL error, see the logs for details...\n\n\n";
+        std::this_thread::sleep_for(2s);
+        exit(-1);
+    }
 }
 
 std::ostringstream & LogMessage::operator()()

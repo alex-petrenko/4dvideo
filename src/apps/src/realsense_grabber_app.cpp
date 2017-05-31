@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     DataVisualizer visualizer(visualizerQueue, cancellationToken);
     visualizer.init();
     visualizer.run();
-    
+
     writerThread.join();
     grabberThread.join();
 

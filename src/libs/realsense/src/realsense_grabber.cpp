@@ -25,7 +25,11 @@ namespace
 {
 
 // constants
-constexpr int colorW = 1920, colorH = 1080;
+#if defined(COLOR_1080P)
+    constexpr int colorW = 1920, colorH = 1080;
+#else
+    constexpr int colorW = 1280, colorH = 720;
+#endif
 
 #if defined(DEPTH_360P)
     constexpr int depthW = 480, depthH = 360;
@@ -126,10 +130,18 @@ void RealsenseGrabber::init()
     for (int profileIdx = 0; ; ++profileIdx)
     {
         PXCCapture::Device::StreamProfileSet profiles;
-        const auto status = device->QueryStreamProfileSet(PXCCapture::STREAM_TYPE_DEPTH, profileIdx, &profiles);
+        const auto status = device->QueryStreamProfileSet(PXCCapture::STREAM_TYPE_DEPTH | PXCCapture::STREAM_TYPE_COLOR, profileIdx, &profiles);
         if (status < PXC_STATUS_NO_ERROR)
+            TLOG(FATAL) << "Stream parameters do not match any profile!";
+
+        const int dw = profiles.depth.imageInfo.width, dh = profiles.depth.imageInfo.height;
+        const int cw = profiles.color.imageInfo.width, ch = profiles.color.imageInfo.height;
+        TLOG(INFO) << "Profile idx: " << profileIdx << " depth: " << dw << "x" << dh << " color: " << cw << "x" << ch;
+        if (dw == depthW && dh == depthH && cw == colorW && ch == colorH && fps == int(profiles.depth.frameRate.max + 0.5f))
+        {
+            TLOG(INFO) << "Found matching profile!";
             break;
-        TLOG(INFO) << "Profile idx: " << profileIdx << " depth: " << profiles.depth.imageInfo.width << "x" << profiles.depth.imageInfo.height;
+        }
     }
 
     device->SetColorAutoExposure(true);

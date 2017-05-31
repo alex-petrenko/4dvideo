@@ -23,6 +23,7 @@ int main(int argc, char *argv[])
     std::string outputPath;
     if (argc > arg)
         outputPath = argv[arg++];
+    const bool writeAnimation = !outputPath.empty();
 
     CancellationToken cancellationToken;
     FrameQueue frameQueue(100), filteredDepthQueue(100);
@@ -50,7 +51,8 @@ int main(int argc, char *argv[])
     {
         MeshFrameProducer meshFrameProducer(cancellationToken);
         meshFrameProducer.addQueue(&playerQueue);
-        meshFrameProducer.addQueue(&writerQueue);
+        if (writeAnimation)
+            meshFrameProducer.addQueue(&writerQueue);
 
         Mesher mesher(filteredDepthQueue, meshFrameProducer, cancellationToken);
         mesher.init();
@@ -59,7 +61,7 @@ int main(int argc, char *argv[])
 
     std::thread writerThread([&]
     {
-        if (outputPath.empty())
+        if (!writeAnimation)
             return;
 
         AnimationWriter writer(outputPath, writerQueue, cancellationToken);
