@@ -76,7 +76,9 @@ private:
     {
         const EdgeIdx e1Idx = numEdges, e2Idx = e1Idx + 1;
         numEdges += 2;
-        assert(numEdges < maxNumEdges * 2 / 3);  // safety margin, might want to allocate bigger buffer if that's exceeded
+        // Safety margin, might want to allocate bigger buffer if that's exceeded.
+        // Can also add "defragmentation" for edge buffer to reduce memory usage.
+        assert(numEdges < maxNumEdges * 2 / 3);  
 
         TriEdge &e1 = E[e1Idx];
         TriEdge &e2 = E[e2Idx];
@@ -222,6 +224,8 @@ void Delaunay::DelaunayImpl::init(const std::vector<PointIJ> &points)
 
 /// Algorithm only works with sorted points, so this function is used to sort them. Also removes duplicates from the sequence.
 /// Returned index map contains original index for every point in sorted sequence.
+/// This function is so messy because it's optimized for speed. It is several times faster than a combination of
+/// standard library's std::sort and std::unique.
 void Delaunay::DelaunayImpl::sortPoints(std::vector<PointIJ> &points, std::vector<short> &indexMap)
 {
     assert(points.size() < std::numeric_limits<short>::max() - 1);
@@ -308,6 +312,62 @@ void Delaunay::DelaunayImpl::triangulate()
     triangulateSubset(0, totalNumPoints, leftmostEdge, rightmostEdge);
 }
 
+/// Main divide and conquer algorithm.
+/// Each call modifies the subdivision structure and returns two edges from the convex hull.
+/// le - index of CCW convex hull edge from leftmost vertex
+/// re - index of CW convex hull edge from rightmost vertex
+void Delaunay::DelaunayImpl::triangulateSubset(uint16_t lIdx, uint16_t numPoints, EdgeIdx &le, EdgeIdx &re)
+{
+    assert(numPoints < maxNumPoints);
+
+    if (numPoints == 2)
+    {
+        const uint16_t s1 = lIdx, s2 = s1 + 1;
+        le = makeEdge(s1, s2);
+        re = E[le].symEdge;
+    }
+    else if (numPoints == 3)
+    {
+        const uint16_t s1 = lIdx, s2 = s1 + 1, s3 = s2 + 1;
+        const EdgeIdx aIdx = makeEdge(s1, s2);
+        const EdgeIdx bIdx = makeEdge(s2, s3);
+
+        join(E[aIdx].symEdge, bIdx);  // now a.sym and b are adjacent
+
+        const Orientation pos = triOrientation(P[s1].j, P[s1].i, P[s2].j, P[s2].i, P[s3].j, P[s3].i);
+        switch (pos)
+        {
+        case ORIENT_CCW:
+            connect(bIdx, aIdx);
+            le = aIdx;
+            re = E[bIdx].symEdge;
+            break;
+        case ORIENT_CW:
+            re = connect(bIdx, aIdx);
+            le = E[re].symEdge;
+            break;
+        default:
+            // points are collinear
+            le = aIdx;
+            re = E[bIdx].symEdge;
+            break;
+        }
+    }
+    else
+    {
+        assert(numPoints >= 4);
+
+        const uint16_t numRight = numPoints / 2, numLeft = numPoints - numRight;
+        EdgeIdx lle;  // CCW convex hull edge starting at the leftmost vertex of left triangulation
+        EdgeIdx lre;  // CW convex hull edge starting at the rightmost vertex of left triangulation
+        EdgeIdx rle;  // CCW convex hull edge starting at the leftmost vertex of right triangulation
+        EdgeIdx rre;  // CW convex hull edge starting at the rightmost vertex of right triangulation
+        triangulateSubset(lIdx + numLeft, numRight, rle, rre);
+        triangulateSubset(lIdx, numLeft, lle, lre);
+        mergeTriangulations(lle, lre, rle, rre, le, re);
+    }
+}
+
 /// Merge phase.
 FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeIdx lre, EdgeIdx rle, EdgeIdx rre, EdgeIdx &le, EdgeIdx &re)
 {
@@ -369,27 +429,6 @@ FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeI
             }
         }
 
-#if ALTERNATIVE_MERGE
-        EdgeIdx lCand = sym(base).nextCcwEdge;
-        bool lCandFound = false;
-        if (isRightOf(destPnt(lCand), base))
-        {
-            EdgeIdx nextLCand = E[lCand].nextCcwEdge;
-            // showTriangulation(triangImg, lCand, INVALID_EDGE, base);
-            while (inCircle(destPnt(base), E[base].origPnt, destPnt(lCand), destPnt(nextLCand)))
-            {
-                assert(isRightOf(destPnt(nextLCand), base));
-                deleteEdge(lCand);
-                lCand = nextLCand;
-                nextLCand = E[lCand].nextCcwEdge;
-                // showTriangulation(triangImg, lCand, INVALID_EDGE, base);
-            }
-            assert(isRightOf(destPnt(lCand), base));
-            // left candidate is found, we can move on
-            lCandFound = true;
-        }
-#endif
-
         EdgeIdx rCand = E[base].prevCcwEdge;
         bool rCandFound = false;
         while (isRightOf(destPnt(rCand), base))
@@ -409,27 +448,6 @@ FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeI
                 break;
             }
         }
-
-#if ALTERNATIVE_MERGE
-        EdgeIdx rCand = E[base].prevCcwEdge;
-        bool rCandFound = false;
-        if (isRightOf(destPnt(rCand), base))
-        {
-            EdgeIdx nextRCand = E[rCand].prevCcwEdge;
-            // showTriangulation(triangImg, INVALID_EDGE, rCand, base);
-            while (inCircle(destPnt(base), E[base].origPnt, destPnt(rCand), destPnt(nextRCand)))
-            {
-                assert(isRightOf(destPnt(nextRCand), base));
-                deleteEdge(rCand);
-                rCand = nextRCand;
-                nextRCand = E[rCand].prevCcwEdge;
-                // showTriangulation(triangImg, INVALID_EDGE, rCand, base);
-            }
-            assert(isRightOf(destPnt(rCand), base));
-            // right candidate is found, we can move on
-            rCandFound = true;
-        }
-#endif
 
         if (!lCandFound && !rCandFound)
         {
@@ -459,179 +477,6 @@ FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeI
         }
     }
 }
-
-/// Main divide and conquer algorithm.
-/// Each call modifies the subdivision structure and returns two edges from the convex hull.
-/// le - index of CCW convex hull edge from leftmost vertex
-/// re - index of CW convex hull edge from rightmost vertex
-void Delaunay::DelaunayImpl::triangulateSubset(uint16_t lIdx, uint16_t numPoints, EdgeIdx &le, EdgeIdx &re)
-{
-    assert(numPoints < maxNumPoints);
-
-    if (numPoints == 2)
-    {
-        const uint16_t s1 = lIdx, s2 = s1 + 1;
-        le = makeEdge(s1, s2);
-        re = E[le].symEdge;
-    }
-    else if (numPoints == 3)
-    {
-        const uint16_t s1 = lIdx, s2 = s1 + 1, s3 = s2 + 1;
-        const EdgeIdx aIdx = makeEdge(s1, s2);
-        const EdgeIdx bIdx = makeEdge(s2, s3);
-
-        join(E[aIdx].symEdge, bIdx);  // now a.sym and b are adjacent
-
-        const Orientation pos = triOrientation(P[s1].j, P[s1].i, P[s2].j, P[s2].i, P[s3].j, P[s3].i);
-        switch (pos)
-        {
-        case ORIENT_CCW:
-            connect(bIdx, aIdx);
-            le = aIdx;
-            re = E[bIdx].symEdge;
-            break;
-        case ORIENT_CW:
-            re = connect(bIdx, aIdx);
-            le = E[re].symEdge;
-            break;
-        default:
-            // points are collinear
-            le = aIdx;
-            re = E[bIdx].symEdge;
-            break;
-        }
-    }
-    else
-    {
-        assert(numPoints >= 4);
-
-        const uint16_t numRight = numPoints / 2, numLeft = numPoints - numRight;
-        EdgeIdx lle;  // index of CCW convex hull edge from leftmost vertex of left triangulation
-        EdgeIdx lre;  // index of CW convex hull edge from rightmost vertex of left triangulation
-        EdgeIdx rle;  // index of CCW convex hull edge from leftmost vertex of right triangulation
-        EdgeIdx rre;  // index of CW convex hull edge from rightmost vertex of right triangulation
-        triangulateSubset(lIdx + numLeft, numRight, rle, rre);
-        triangulateSubset(lIdx, numLeft, lle, lre);
-
-        mergeTriangulations(lle, lre, rle, rre, le, re);
-    }
-}
-
-#if USE_NON_RECURSIVE_TRIANGULATION
-
-const int maxStackSize = 100;
-int stackIdx = 0;
-
-enum class Stage
-{
-    START = 0,
-    SUBTASKS_CALLED = 1,
-};
-
-struct TriangulationParams
-{
-    EdgeIdx lle, lre, rle, rre;
-    Stage stage;
-    uint16_t lIdx, numPoints;
-    EdgeIdx *le, *re;  // return values
-};
-
-TriangulationParams stack[maxStackSize];
-
-
-void triangulateNonRecursive(uint16_t initLIdx, uint16_t initNumPoints, EdgeIdx &leReturn, EdgeIdx &reReturn)
-{
-    assert(initNumPoints < maxNumPoints);
-
-    TriangulationParams &init = stack[0];
-    init.lIdx = initLIdx;
-    init.numPoints = initNumPoints;
-    init.stage = Stage::START;
-    init.le = &leReturn;
-    init.re = &reReturn;
-
-    while (stackIdx >= 0)
-    {
-        assert(stackIdx < maxStackSize / 2);
-
-        TriangulationParams &params = stack[stackIdx];
-        const uint16_t numPoints = params.numPoints;
-        const uint16_t lIdx = params.lIdx;
-        EdgeIdx * const le = params.le;
-        EdgeIdx * const re = params.re;
-
-        if (params.stage == Stage::START)
-        {
-            if (numPoints == 2)
-            {
-                const uint16_t s1 = lIdx, s2 = s1 + 1;
-                *le = makeEdge(s1, s2);
-                *re = E[*le].symEdge;
-                --stackIdx;
-            }
-            else if (numPoints == 3)
-            {
-                const uint16_t s1 = lIdx, s2 = s1 + 1, s3 = s2 + 1;
-                const EdgeIdx aIdx = makeEdge(s1, s2);
-                const EdgeIdx bIdx = makeEdge(s2, s3);
-
-                join(E[aIdx].symEdge, bIdx);  // now a.sym and b are adjacent
-
-                const Orientation pos = triOrientation(P(s1).j, P(s1).i, P(s2).j, P(s2).i, P(s3).j, P(s3).i);
-                switch (pos)
-                {
-                case ORIENT_CCW:
-                    connect(bIdx, aIdx);
-                    *le = aIdx;
-                    *re = E[bIdx].symEdge;
-                    break;
-                case ORIENT_CW:
-                    *re = connect(bIdx, aIdx);
-                    *le = E[*re].symEdge;
-                    break;
-                default:
-                    // points are collinear
-                    *le = aIdx;
-                    *re = E[bIdx].symEdge;
-                    break;
-                }
-
-                --stackIdx;
-            }
-            else
-            {
-                assert(numPoints >= 4);
-
-                const int numRight = numPoints / 2, numLeft = numPoints - numRight;
-
-                TriangulationParams &pRight = stack[++stackIdx];
-                pRight.stage = Stage::START;
-                pRight.lIdx = lIdx + numLeft;
-                pRight.numPoints = numRight;
-                pRight.le = &params.rle;
-                pRight.re = &params.rre;
-
-                TriangulationParams &pLeft = stack[++stackIdx];
-                pLeft.stage = Stage::START;
-                pLeft.lIdx = params.lIdx;
-                pLeft.numPoints = numLeft;
-                pLeft.le = &params.lle;
-                pLeft.re = &params.lre;
-
-                params.stage = Stage::SUBTASKS_CALLED;
-            }
-        }
-        else
-        {
-            assert(params.stage == Stage::SUBTASKS_CALLED);
-
-            mergeTriangulations(params.lle, params.lre, params.rle, params.rre, *params.le, *params.re);
-            --stackIdx;
-        }
-    }
-}
-#endif
-
 
 void Delaunay::DelaunayImpl::generateTriangles()
 {
@@ -783,18 +628,18 @@ bool Delaunay::DelaunayImpl::isEqualTo(const std::vector<PointIJ> &points, const
 /// Draw connected component containing edge "initEdge" into a given cv::Mat.
 void Delaunay::DelaunayImpl::plotTriangulation(cv::Mat &img, EdgeIdx le, EdgeIdx re, EdgeIdx base)
 {
-    EdgeIdx initEdge = le;
-    if (le == INVALID_EDGE)
-    {
-        if (re == INVALID_EDGE)
+    EdgeIdx initEdge = INVALID_EDGE;
+    for (const auto &e : { le, re, base })
+        if (e != INVALID_EDGE)
         {
-            if (base == INVALID_EDGE)
-                return;
-            else
-                initEdge = base;
+            initEdge = e;
+            break;
         }
-        else
-            initEdge = re;
+
+    if (initEdge == INVALID_EDGE)
+    {
+        TLOG(ERROR) << "Cannot plot triangulation, no valid edge given";
+        return;
     }
 
     if (img.empty())
