@@ -184,7 +184,7 @@ void RealsenseGrabber::init()
 
 void RealsenseGrabber::run()
 {
-    while (!cancel && !appState().isGrabbingStarted())
+    while (!cancel && !appState().isCapturingStarted())
         std::this_thread::sleep_for(30ms);
 
     auto senseManager = data->senseManager;
@@ -192,7 +192,7 @@ void RealsenseGrabber::run()
     int numFrames = 0;
 
     RealSense::Status status = PXC_STATUS_NO_ERROR;
-    while (!cancel && !appState().isGrabbingStopped())
+    while (!cancel && !appState().isCapturingStopped())
     {
         status = senseManager->AcquireFrame(true, 1000);
         if (status < PXC_STATUS_NO_ERROR)

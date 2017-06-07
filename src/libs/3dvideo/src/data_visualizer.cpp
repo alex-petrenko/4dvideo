@@ -31,15 +31,17 @@ void handleEvents(CancellationToken &cancel)
     const auto key = cv::waitKey(15);
     if (key == ' ')
     {
-        if (!appState().isGrabbingStarted())
+        if (!appState().isCapturingStarted())
+            appState().startCapturing();
+        else if (!appState().isGrabbingStarted())
             appState().startGrabbing();
         else
-            appState().stopGrabbing();
+            appState().stopCapturing();
     }
     else if (key == escape)
     {
         TLOG(INFO) << "Exiting...";
-        appState().stopGrabbing();
+        appState().stopCapturing();
         cancel.trigger();
     }
 }

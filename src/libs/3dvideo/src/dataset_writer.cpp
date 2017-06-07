@@ -29,6 +29,9 @@ void DatasetWriter::init()
 
 void DatasetWriter::process(std::shared_ptr<Frame> &frame)
 {
+    if (!appState().isGrabbingStarted())
+        return;
+
     dataset.writeFrame(*frame);
     TLOG(INFO) << "Finished writing frame #" << frame->frameNumber;
 }

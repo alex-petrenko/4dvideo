@@ -26,6 +26,8 @@ TEST_F(binaryDataset, readWrite)
     CancellationToken cancellationToken;
     FrameQueue queue;
 
+    appState().startGrabbing();
+
     std::thread writerThread([&]()
     {
         DatasetWriter writer(testDatasetCopy, queue, cancellationToken);

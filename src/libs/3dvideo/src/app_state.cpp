@@ -12,30 +12,41 @@ AppState & AppState::instance()
 void AppState::reset()
 {
     TLOG(INFO);
-    start = stop = false;
+    grabbingStarted = capturingStopped = false;
     sensorManager.setInitialized(false);
+}
+
+void AppState::startCapturing()
+{
+    TLOG(INFO);
+    capturingStarted = true;
+}
+
+bool AppState::isCapturingStarted() const
+{
+    return capturingStarted.load();
 }
 
 void AppState::startGrabbing()
 {
     TLOG(INFO);
-    start = true;
+    grabbingStarted = true;
 }
 
 bool AppState::isGrabbingStarted() const
 {
-    return start.load();
+    return grabbingStarted.load();
 }
 
-void AppState::stopGrabbing()
+void AppState::stopCapturing()
 {
     TLOG(INFO);
-    stop = true;
+    capturingStopped = true;
 }
 
-bool AppState::isGrabbingStopped()
+bool AppState::isCapturingStopped()
 {
-    return stop.load();
+    return capturingStopped.load();
 }
 
 SensorManager & AppState::getSensorManager()

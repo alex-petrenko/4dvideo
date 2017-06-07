@@ -12,11 +12,14 @@ public:
 
     void reset();
 
+    void startCapturing();
+    bool isCapturingStarted() const;
+
     void startGrabbing();
     bool isGrabbingStarted() const;
 
-    void stopGrabbing();
-    bool isGrabbingStopped();
+    void stopCapturing();
+    bool isCapturingStopped();
 
     SensorManager & getSensorManager();
 
@@ -26,7 +29,7 @@ private:
     void operator=(const AppState &) = delete;
 
 private:
-    std::atomic_bool start = false, stop = false;
+    std::atomic_bool capturingStarted = false, grabbingStarted = false, capturingStopped = false;
 
     SensorManager sensorManager;
 };
