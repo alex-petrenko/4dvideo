@@ -20,8 +20,13 @@ void endianSwap(T *x)
     std::reverse((char *)x, (char *)x + size);
 }
 
-void memcpyStride(char *dst, const char *src, int elemSize, int numElements, int ofs, int stride);
+template<typename C, typename T>
+bool contains(const C &c, const T &val)
+{
+    return std::find(std::begin(c), std::end(c), val) != std::end(c);
+}
 
+void memcpyStride(char *dst, const char *src, int elemSize, int numElements, int ofs, int stride);
 
 template<typename T>
 class Ignore

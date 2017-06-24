@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 #include <cstdint>
+#include <functional>
 
 #include <opencv2/core.hpp>
 
@@ -31,6 +32,10 @@ struct TriEdge
 
 class Delaunay
 {
+public:
+    typedef void VisualizationCallback(const cv::Mat &);
+
+private:
     class DelaunayImpl;
 
 public:
@@ -44,8 +49,11 @@ public:
     void triangulate();
     void generateTriangles();
 
+    // visualization
     void plotTriangulation(cv::Mat &img);
     void showTriangulation();
+    void setVisualizationCallback(const std::function<VisualizationCallback> &callback);
+
     static void saveTriangulation(const std::string &filename, int numP, const PointIJ *p, int numT, const Triangle *t);
     static void loadTriangulation(const std::string &filename, std::vector<PointIJ> &p, std::vector<Triangle> &t);
 

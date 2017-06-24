@@ -7,8 +7,36 @@
 
 #include <tri/triangulation.hpp>
 
+#include <util/util.hpp>
 #include <util/geometry.hpp>
 #include <util/tiny_logger.hpp>
+#include <util/tiny_profiler.hpp>
+
+
+namespace
+{
+
+// Visualization helpers. All visualization functionality must be disabled when performance is the goal.
+#define WITH_VIS 1
+
+enum class VisTag
+{
+    SUBDIVISION,
+    FIND_CANDIDATES,
+    UPDATE_BASE_EDGE,
+    MERGE_COMPLETED,
+    FINAL,
+};
+
+#if WITH_VIS
+#define VIS(...) visualizeAll(__VA_ARGS__);
+#define VIS_NFRAMES(n, ...) for (int visI = 0; visI < (n); ++visI) VIS(__VA_ARGS__)
+#else
+#define VIS(...)
+#define VIS_NFRAMES(n, ...)
+#endif
+
+}
 
 
 class Delaunay::DelaunayImpl
@@ -20,6 +48,7 @@ private:
         : totalNumPoints(0)
         , numEdges(0)
     {
+        memset(E, INVALID_EDGE, sizeof(E));
     }
 
     // Geometry helpers.
@@ -130,7 +159,7 @@ private:
     /// Removes references to given edge from the linked list around it's origin.
     FORCE_INLINE void unlink(EdgeIdx eIdx)
     {
-        const TriEdge &e = E[eIdx];
+        TriEdge &e = E[eIdx];
         E[e.nextCcwEdge].prevCcwEdge = e.prevCcwEdge;
         E[e.prevCcwEdge].nextCcwEdge = e.nextCcwEdge;
     }
@@ -140,6 +169,9 @@ private:
     {
         unlink(eIdx);
         unlink(E[eIdx].symEdge);
+
+        sym(eIdx).symEdge = INVALID_EDGE;
+        E[eIdx].symEdge = INVALID_EDGE;
     }
 
 
@@ -148,7 +180,7 @@ private:
     /// Call before each run of an algorithm.
     void init(const std::vector<PointIJ> &points);
 
-    /// Very fast radix sort.
+    /// Fast radix sort.
     void sortPoints(std::vector<PointIJ> &points, std::vector<short> &indexMap);
 
     /// Algorithm entry point.
@@ -171,12 +203,22 @@ private:
 
     // Auxiliary stuff.
 
-    /// Draw connected component into a given cv::Mat.
+    /// Draw the entire triangulation in a given cv::Mat.
+    /// If starting edge is given, draw only the connected component containing this edge.
     /// Highlights leftmost, rightmost and base edges if they are given.
-    void plotTriangulation(cv::Mat &img, EdgeIdx le, EdgeIdx re = INVALID_EDGE, EdgeIdx base = INVALID_EDGE);
+    void plotTriangulation(cv::Mat &img, EdgeIdx start = INVALID_EDGE, EdgeIdx le = INVALID_EDGE, EdgeIdx re = INVALID_EDGE, EdgeIdx base = INVALID_EDGE, EdgeIdx deleted = INVALID_EDGE);
 
     /// Show triangulation on a screen (mostly for debugging purposes).
     void showTriangulation(cv::Mat &img, EdgeIdx le, EdgeIdx re = INVALID_EDGE, EdgeIdx base = INVALID_EDGE);
+
+    /// Set function to be called when intermediate state of the calculation is visualized.
+    void setVisualizationCallback(const std::function<VisualizationCallback> &callback);
+
+    /// Draw intermediate triangulation state into a cv::Mat and call visualization callback if one is set.
+    void visualize(VisTag tag, bool clean = true, EdgeIdx start = INVALID_EDGE, EdgeIdx le = INVALID_EDGE, EdgeIdx re = INVALID_EDGE, EdgeIdx base = INVALID_EDGE, EdgeIdx deleted = INVALID_EDGE);
+
+    /// Same as previous but with less boilerplate.
+    void visualizeAll(VisTag tag, EdgeIdx le = INVALID_EDGE, EdgeIdx re = INVALID_EDGE, EdgeIdx base = INVALID_EDGE, EdgeIdx deleted = INVALID_EDGE);
 
     /// Obtain list of triangles from the triangulation graph.
     void generateTriangles();
@@ -194,11 +236,11 @@ private:
     uint16_t totalNumPoints = 0;
     const PointIJ *P;
 
-    int numEdges = 0;
+    uint32_t numEdges = 0;
     TriEdge E[maxNumEdges];
     EdgeIdx leftmostEdge = INVALID_EDGE, rightmostEdge = INVALID_EDGE;  // valid only when triangulation is calculated
 
-    int numTriangles = 0;
+    uint32_t numTriangles = 0;
     Triangle triangles[maxNumTriangles];
 
     // auxiliary data for generateTriangles
@@ -209,6 +251,14 @@ private:
     PointIJ pointsSortedByI[maxNumPoints];
     short originalIdx[maxNumPoints];
     short numPointsPerCoord[maxCoord], coordIdx[maxCoord];
+
+    // visualization
+    std::function<VisualizationCallback> visualizationCallback;
+    cv::Mat triImg;
+    float visScaleI = 1, visScaleJ = 1;
+    int visOfs = 0;
+    static constexpr int visW = 1600, visH = 900;
+    static constexpr bool visFixedResolution = false;
 };
 
 
@@ -220,6 +270,10 @@ void Delaunay::DelaunayImpl::init(const std::vector<PointIJ> &points)
     assert(points.size() < std::numeric_limits<uint16_t>::max());
     totalNumPoints = uint16_t(points.size());
     numEdges = numTriangles = 0;
+
+#if WITH_VIS
+    triImg = cv::Mat();  // clean the image at each reinitialization
+#endif
 }
 
 /// Algorithm only works with sorted points, so this function is used to sort them. Also removes duplicates from the sequence.
@@ -236,7 +290,10 @@ void Delaunay::DelaunayImpl::sortPoints(std::vector<PointIJ> &points, std::vecto
     memset(numPointsPerCoord, 0, sizeof(numPointsPerCoord));
     memset(coordIdx, 0, sizeof(coordIdx));
     for (size_t i = 0; i < points.size(); ++i)
+    {
+        assert(points[i].i < maxCoord);
         ++numPointsPerCoord[points[i].i];
+    }
     // sort in reverse order by i coordinate
     for (int i = maxCoord - 2; i >= 0; --i)
         coordIdx[i] = coordIdx[i + 1] + numPointsPerCoord[i + 1];
@@ -310,6 +367,7 @@ void Delaunay::DelaunayImpl::triangulate()
 
     leftmostEdge = rightmostEdge = INVALID_EDGE;
     triangulateSubset(0, totalNumPoints, leftmostEdge, rightmostEdge);
+    VIS_NFRAMES(2, VisTag::FINAL);
 }
 
 /// Main divide and conquer algorithm.
@@ -325,6 +383,7 @@ void Delaunay::DelaunayImpl::triangulateSubset(uint16_t lIdx, uint16_t numPoints
         const uint16_t s1 = lIdx, s2 = s1 + 1;
         le = makeEdge(s1, s2);
         re = E[le].symEdge;
+        VIS(VisTag::SUBDIVISION);
     }
     else if (numPoints == 3)
     {
@@ -352,6 +411,7 @@ void Delaunay::DelaunayImpl::triangulateSubset(uint16_t lIdx, uint16_t numPoints
             re = E[bIdx].symEdge;
             break;
         }
+        VIS(VisTag::SUBDIVISION);
     }
     else
     {
@@ -371,7 +431,7 @@ void Delaunay::DelaunayImpl::triangulateSubset(uint16_t lIdx, uint16_t numPoints
 /// Merge phase.
 FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeIdx lre, EdgeIdx rle, EdgeIdx rre, EdgeIdx &le, EdgeIdx &re)
 {
-    // first, find the new base edge, the lower common tangent of left and right subdivisions.
+    // first, find the new base edge, the lower common tangent of left and right subdivisions
     while (true)
     {
         // move edges down across convex hull of subdivision until we find a tangent
@@ -394,6 +454,7 @@ FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeI
 
     // create "base" edge, we will work up from it merging the triangulations
     EdgeIdx base = connect(E[rle].symEdge, lre);
+    VIS(VisTag::UPDATE_BASE_EDGE, INVALID_EDGE, INVALID_EDGE, base);
     assert(!isLeftOf(E[lle].origPnt, base));
     assert(!isLeftOf(E[rre].origPnt, base));
 
@@ -411,6 +472,7 @@ FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeI
     while (true)
     {
         EdgeIdx lCand = sym(base).nextCcwEdge;
+        VIS(VisTag::FIND_CANDIDATES, lCand, INVALID_EDGE, base);
         bool lCandFound = false;
         while (isRightOf(destPnt(lCand), base))
         {
@@ -418,8 +480,10 @@ FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeI
             if (inCircle(destPnt(base), E[base].origPnt, destPnt(lCand), destPnt(nextLCand)))
             {
                 assert(isRightOf(destPnt(nextLCand), base));
+                VIS_NFRAMES(2, VisTag::FIND_CANDIDATES, INVALID_EDGE, INVALID_EDGE, base, lCand);
                 deleteEdge(lCand);
                 lCand = nextLCand;
+                VIS(VisTag::FIND_CANDIDATES, lCand, INVALID_EDGE, base);
             }
             else
             {
@@ -430,16 +494,17 @@ FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeI
         }
 
         EdgeIdx rCand = E[base].prevCcwEdge;
+        VIS(VisTag::FIND_CANDIDATES, lCand, rCand, base);
         bool rCandFound = false;
         while (isRightOf(destPnt(rCand), base))
         {
             const EdgeIdx nextRCand = E[rCand].prevCcwEdge;
-            // showTriangulation(triangImg, INVALID_EDGE, rCand, base);
             if (inCircle(destPnt(base), E[base].origPnt, destPnt(rCand), destPnt(nextRCand)))
             {
+                VIS_NFRAMES(2, VisTag::FIND_CANDIDATES, lCand, INVALID_EDGE, base, rCand);
                 deleteEdge(rCand);
                 rCand = nextRCand;
-                // showTriangulation(triangImg, INVALID_EDGE, rCand, base);
+                VIS(VisTag::FIND_CANDIDATES, lCand, rCand, base);
             }
             else
             {
@@ -460,6 +525,7 @@ FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeI
                 assert(!isRightOf(E[rre].origPnt, base));
             }
 
+            VIS(VisTag::MERGE_COMPLETED, INVALID_EDGE, INVALID_EDGE, base);
             break;
         }
         else  // at least one valid candidate is found
@@ -467,13 +533,17 @@ FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeI
             if (!lCandFound || (rCandFound && inCircle(destPnt(base), E[base].origPnt, destPnt(lCand), destPnt(rCand))))
             {
                 // either lCand not found or rCand destination is in lCand triangle circumcircle --> select rCand
+                VIS(VisTag::UPDATE_BASE_EDGE, INVALID_EDGE, rCand, base);
                 base = connect(rCand, E[base].symEdge);
             }
             else
             {
                 // select lCand
+                VIS(VisTag::UPDATE_BASE_EDGE, lCand, INVALID_EDGE, base);
                 base = connect(E[base].symEdge, E[lCand].symEdge);
             }
+
+            VIS(VisTag::UPDATE_BASE_EDGE, INVALID_EDGE, INVALID_EDGE, base);
         }
     }
 }
@@ -508,7 +578,7 @@ void Delaunay::DelaunayImpl::generateTriangles()
         if (E[side1].origPnt == destPnt(side2))
         {
             // Three edges indeed form an oriented clockwise triangle.
-            // Let's add it to the list of triangles! (TODO: triangle strips?)
+            // Let's add it to the list of triangles!
             Triangle &t = triangles[numTriangles++];
             t.p1 = currEdge.origPnt;
             t.p2 = E[side1].origPnt;
@@ -601,7 +671,7 @@ bool Delaunay::DelaunayImpl::isEqualTo(const std::vector<PointIJ> &points, const
     };
 
     AdjLists thisAdj(totalNumPoints), otherAdj(totalNumPoints);
-    for (int i = 0; i < numTriangles; ++i)
+    for (size_t i = 0; i < numTriangles; ++i)
     {
         const Triangle &thisT = triangles[i];
         addTriangle(thisAdj, thisT);
@@ -626,116 +696,166 @@ bool Delaunay::DelaunayImpl::isEqualTo(const std::vector<PointIJ> &points, const
 }
 
 /// Draw connected component containing edge "initEdge" into a given cv::Mat.
-void Delaunay::DelaunayImpl::plotTriangulation(cv::Mat &img, EdgeIdx le, EdgeIdx re, EdgeIdx base)
+void Delaunay::DelaunayImpl::plotTriangulation(cv::Mat &img, EdgeIdx start, EdgeIdx le, EdgeIdx re, EdgeIdx base, EdgeIdx deleted)
 {
-    EdgeIdx initEdge = INVALID_EDGE;
-    for (const auto &e : { le, re, base })
-        if (e != INVALID_EDGE)
-        {
-            initEdge = e;
-            break;
-        }
-
-    if (initEdge == INVALID_EDGE)
-    {
-        TLOG(ERROR) << "Cannot plot triangulation, no valid edge given";
-        return;
-    }
+    tprof().startTimer("plot");
 
     if (img.empty())
-        img = cv::Mat::zeros(cv::Size(1800, 1000), CV_8UC3);
-    else
-        memset(img.data, 0, img.total() * img.elemSize());
+        img = cv::Mat::zeros(cv::Size(visW, visH), CV_8UC3);
 
-    // calculate bounding box to get optimal scale
-    short maxI = 0, maxJ = 0;
+    std::queue<EdgeIdx> q;
+    std::vector<bool> addedPoints(totalNumPoints), visitedPoints(totalNumPoints), visitedEdges(numEdges);
+
+    std::vector<EdgeIdx> edges;
+    if (start == INVALID_EDGE)
+    {
+        // no start edge given, draw all graph components
+        for (EdgeIdx e = 0; e < numEdges; ++e)
+            if (E[e].symEdge != INVALID_EDGE)
+                edges.push_back(e);
+    }
+    else
+        edges.push_back(start);
+
+    for (EdgeIdx e : edges)
+    {
+        if (visitedEdges[e])
+            continue;
+
+        q.push(e);
+        visitedEdges[e] = visitedEdges[E[e].symEdge] = true;
+        addedPoints[E[e].origPnt] = true;
+
+        int iter = 0;
+        while (!q.empty())
+        {
+            ++iter;
+            const EdgeIdx currEdgeIdx = q.front();
+            q.pop();
+
+            const uint16_t currPntIdx = E[currEdgeIdx].origPnt;
+            const PointIJ &currPnt = P[currPntIdx];
+
+            EdgeIdx edgeIdx = currEdgeIdx;
+            do
+            {
+                const uint16_t destPntIdx = destPnt(edgeIdx);
+                const PointIJ &destPnt = P[destPntIdx];
+
+                auto color = cv::Scalar(0x99, 0x99, 0x99);
+                bool specialFace = false;
+                int thickness = 1;
+                if (edgeIdx == le)
+                    color = cv::Scalar(0, 0xFF, 0), specialFace = true, ++thickness;
+                else if (edgeIdx == re)
+                    color = cv::Scalar(0xFF, 0, 0), specialFace = true, ++thickness;
+                else if (edgeIdx == deleted)
+                    color = cv::Scalar(0, 0, 0xFF), specialFace = true, thickness += 3;
+
+                if (edgeIdx == base)
+                    color = cv::Scalar(0, 0xA5, 0xFF), specialFace = true, ++thickness;
+
+                if (!visitedPoints[destPntIdx] || specialFace)
+                {
+                    cv::line(img,
+                             cv::Point2i(int(currPnt.j * visScaleJ + visOfs), int(currPnt.i * visScaleI + visOfs)),
+                             cv::Point2i(int(destPnt.j * visScaleJ + visOfs), int(destPnt.i * visScaleI + visOfs)),
+                             color,
+                             thickness);
+                }
+
+                if (specialFace)
+                    cv::circle(img, cv::Point2i(int(currPnt.j * visScaleJ + visOfs), int(currPnt.i * visScaleI + visOfs)), 3, color, 3);
+
+                if (!addedPoints[destPntIdx])
+                {
+                    q.push(E[edgeIdx].symEdge);
+                    visitedEdges[edgeIdx] = visitedEdges[E[edgeIdx].symEdge] = true;
+                    addedPoints[destPntIdx] = true;
+                }
+
+                edgeIdx = E[edgeIdx].nextCcwEdge;
+            } while (edgeIdx != currEdgeIdx);
+
+            visitedPoints[currPntIdx] = true;
+            assert(addedPoints[currPntIdx]);
+        }
+    }
+
+    const auto pclr = cv::Scalar_<uchar>(0x99, 0x99, 0x99);
     for (int i = 0; i < totalNumPoints; ++i)
     {
         const PointIJ &p = P[i];
-        maxI = std::max(maxI, p.i);
-        maxJ = std::max(maxJ, p.j);
-    }
-    const float scaleI = 0.9f * (float(img.rows) / float(maxI));
-    const float scaleJ = 0.9f * (float(img.cols) / float(maxJ));
-    const int ofs = 5;  // margins
-
-    std::queue<EdgeIdx> q;
-    q.push(initEdge);
-    std::vector<bool> added(totalNumPoints), visited(totalNumPoints);
-    added[E[initEdge].origPnt] = true;
-
-    int leftJ = 0xFFFF, rightJ = 0;
-
-    while (!q.empty())
-    {
-        const EdgeIdx currEdgeIdx = q.front();
-        q.pop();
-
-        const uint16_t currPntIdx = E[currEdgeIdx].origPnt;
-        const PointIJ &currPnt = P[currPntIdx];
-
-        leftJ = std::min(leftJ, int(currPnt.j));
-        rightJ = std::max(rightJ, int(currPnt.j));
-
-        EdgeIdx edgeIdx = currEdgeIdx;
-        do
-        {
-            const uint16_t destPntIdx = destPnt(edgeIdx);
-            const PointIJ &destPnt = P[destPntIdx];
-
-            auto color = cv::Scalar(0xFF, 0xFF, 0xFF);
-            bool specialFace = false;
-            int thickness = 1;
-            if (edgeIdx == le)
-                color = cv::Scalar(0, 0xFF, 0), specialFace = true, thickness = 3;
-            else if (edgeIdx == re)
-                color = cv::Scalar(0xFF, 0, 0), specialFace = true, thickness = 2;
-
-            if (edgeIdx == base)
-                color = cv::Scalar(0, 0xA5, 0xFF), specialFace = true, thickness = 5;
-
-            if (!visited[destPntIdx] || specialFace)
-            {
-                cv::line(img,
-                         cv::Point2i(int(currPnt.j * scaleJ + ofs), int(currPnt.i * scaleI + ofs)),
-                         cv::Point2i(int(destPnt.j * scaleJ + ofs), int(destPnt.i * scaleI + ofs)),
-                         color,
-                         thickness);
-            }
-
-            if (specialFace)
-                cv::circle(img, cv::Point2i(int(currPnt.j * scaleJ + ofs), int(currPnt.i * scaleI + ofs)), 4, color, 4);
-
-            if (!added[destPntIdx])
-            {
-                q.push(E[edgeIdx].symEdge);
-                added[destPntIdx] = true;
-            }
-
-            edgeIdx = E[edgeIdx].nextCcwEdge;
-        } while (edgeIdx != currEdgeIdx);
-
-        visited[currPntIdx] = true;
-        assert(added[currPntIdx]);
+        const cv::Point2i center{ int(p.j * visScaleJ + visOfs), int(p.i * visScaleI + visOfs) };
+        constexpr bool drawCircle = true;
+        if (drawCircle)
+            cv::circle(img, center, 1, pclr, 2);
+        else
+            img.at<cv::Vec3b>(center) = cv::Vec3b(pclr[0], pclr[1], pclr[2]);
     }
 
-    if (rightJ * scaleJ - leftJ * scaleJ > 30)
-    {
-        for (int i = 0; i < totalNumPoints; ++i)
-        {
-            const PointIJ &p = P[i];
-            cv::Vec3b &pixel = img.at<cv::Vec3b>(int(p.i * scaleI + ofs), int(p.j * scaleJ + ofs));
-            pixel[0] = 0x77;
-            pixel[1] = pixel[2] = 0x55;
-        }
-    }
+    tprof().stopTimer("plot");
 }
 
 void Delaunay::DelaunayImpl::showTriangulation(cv::Mat &img, EdgeIdx le, EdgeIdx re, EdgeIdx base)
 {
-    plotTriangulation(img, le, re, base);
+    memset(img.data, 0, img.total() * img.elemSize());
+    plotTriangulation(img, le, le, re, base);
     cv::imshow("tri", img);
     cv::waitKey();
+}
+
+void Delaunay::DelaunayImpl::setVisualizationCallback(const std::function<VisualizationCallback> &callback)
+{
+    visualizationCallback = callback;
+}
+
+void Delaunay::DelaunayImpl::visualize(VisTag tag, bool clean, EdgeIdx start, EdgeIdx le, EdgeIdx re, EdgeIdx base, EdgeIdx deleted)
+{
+    std::vector<VisTag> tags{ VisTag::SUBDIVISION };
+    constexpr bool showAllStages = true;
+    if (!contains(tags, tag) && !showAllStages)
+        return;
+
+    // initialize the visualization (determine the scale and resolution)
+    if (triImg.empty())
+    {
+        // calculate bounding box to get optimal scale
+        short maxI = 0, maxJ = 0;
+        for (int i = 0; i < totalNumPoints; ++i)
+        {
+            const PointIJ &p = P[i];
+            maxI = std::max(maxI, p.i);
+            maxJ = std::max(maxJ, p.j);
+        }
+
+        constexpr float imgPercentage = 0.85f;
+        if (visFixedResolution)
+        {
+            triImg = cv::Mat::zeros(cv::Size(visW, visH), CV_8UC3);
+            visScaleI = imgPercentage * (float(triImg.rows) / float(maxI));
+            visScaleJ = imgPercentage * (float(triImg.cols) / float(maxJ));
+        }
+        else
+        {
+            const int w = int(maxJ / imgPercentage), h = int(maxI / imgPercentage);
+            triImg = cv::Mat::zeros(cv::Size(w, h), CV_8UC3);
+            visScaleI = visScaleJ = 1;
+        }
+
+        visOfs = int((triImg.rows - maxI * visScaleI) / 2);  // margins
+    }
+    else if (clean)
+        memset(triImg.data, 0, triImg.total() * triImg.elemSize());
+
+    plotTriangulation(triImg, start, le, re, base, deleted);
+    if (visualizationCallback)
+        visualizationCallback(triImg);
+}
+
+void Delaunay::DelaunayImpl::visualizeAll(VisTag tag, EdgeIdx le, EdgeIdx re, EdgeIdx base, EdgeIdx deleted)
+{
+    visualize(tag, true, INVALID_EDGE, le, re, base, deleted);
 }
 
 
@@ -790,6 +910,11 @@ void Delaunay::showTriangulation()
 {
     cv::Mat image;
     data->showTriangulation(image, data->leftmostEdge);
+}
+
+void Delaunay::setVisualizationCallback(const std::function<VisualizationCallback> &callback)
+{
+    data->setVisualizationCallback(callback);
 }
 
 void Delaunay::saveTriangulation(const std::string &filename, int numP, const PointIJ *p, int numT, const Triangle *t)
