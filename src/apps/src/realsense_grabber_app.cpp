@@ -1,6 +1,8 @@
 #include <thread>
+#include <iomanip>
 
 #include <util/tiny_logger.hpp>
+#include <util/filesystem_utils.hpp>
 
 #include <3dvideo/dataset_writer.hpp>
 #include <3dvideo/data_visualizer.hpp>
@@ -15,7 +17,19 @@ int main(int argc, char *argv[])
         TLOG(FATAL) << "Expected " << numArgs << " arguments, got " << argc;
 
     int arg = 1;
-    const std::string datasetPath(argv[arg++]);
+    const std::string originalPath(argv[arg++]);
+    std::string datasetPath(originalPath);
+
+    int fileIdx = 0;
+    while (fileExists(datasetPath))
+    {
+        ++fileIdx;
+        std::ostringstream s;
+        s << originalPath << std::setw(2) << std::setfill('0') << fileIdx;
+        datasetPath = s.str();
+    }
+
+    TLOG(INFO) << "Dataset path: " << datasetPath;
 
     CancellationToken cancellationToken;
     FrameQueue writerQueue, visualizerQueue;

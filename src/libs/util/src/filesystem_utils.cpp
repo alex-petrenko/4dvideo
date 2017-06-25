@@ -12,3 +12,9 @@ size_t readAllBytes(std::ifstream &stream, std::vector<char> &buffer)
     else
         return 0;
 }
+
+bool fileExists(const std::string filename)
+{
+    std::ifstream f(filename);
+    return f.good();
+}
