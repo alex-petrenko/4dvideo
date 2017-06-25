@@ -85,10 +85,10 @@ std::vector<PointIJ> getPointsCircleCenter(int n = 60, int r = 160, int cx = 160
 
 std::vector<PointIJ> getPointsCirclesGrid(bool withCenters = false)
 {
-    const auto grid = getPointsGrid(5, 150);
+    const auto grid = getPointsGrid(8, 110);
     std::vector<PointIJ> points, circle;
 
-    const int n = 20, r = 24;
+    const int n = 18, r = 30;
     for (const auto &p : grid)
     {
         if (withCenters)
@@ -132,7 +132,7 @@ void saveToDisk(const cv::Mat &img)
 {
     static int numFrames = 0;
     std::stringstream s;
-    s << R"(C:\all\projects\personal\3dvideo_data\article\animations\07_circle2\)";
+    s << R"(C:\all\projects\personal\3dvideo_data\article\animations\08_circles_grid\)";
     s << "frame_" << std::setw(8) << std::setfill('0') << numFrames << ".png";
     ++numFrames;
     const auto path = s.str();
@@ -161,7 +161,7 @@ protected:
     }
 
 private:
-    void pauseAtTheEnd(int fps = 45, int delaySeconds = 4)
+    void pauseAtTheEnd(int fps = 60, int delaySeconds = 4)
     {
         for (int i = 0; i < fps * delaySeconds; ++i)
             saveToDisk(*lastFrame);
@@ -177,7 +177,7 @@ int main()
 {
     using namespace std::placeholders;
 
-    auto points = getPointsCircleCenter();
+    auto points = getPointsCirclesGrid();
     alignPoints(points);
     std::vector<short> indexMap(points.size());
 
