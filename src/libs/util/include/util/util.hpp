@@ -13,6 +13,8 @@ FORCE_INLINE T sqr(T x)
     return x * x;
 }
 
+int randRange(int low, int high);
+
 template<typename T>
 void endianSwap(T *x)
 {

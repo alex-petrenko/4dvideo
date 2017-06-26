@@ -5,6 +5,7 @@
 
 #include <opencv2/highgui.hpp>
 
+#include <util/util.hpp>
 #include <util/consumer.hpp>
 #include <util/producer.hpp>
 #include <util/tiny_logger.hpp>
@@ -85,12 +86,16 @@ std::vector<PointIJ> getPointsCircleCenter(int n = 60, int r = 160, int cx = 160
 
 std::vector<PointIJ> getPointsCirclesGrid(bool withCenters = false)
 {
-    const auto grid = getPointsGrid(8, 110);
+    const auto grid = getPointsGrid(6, 150);
     std::vector<PointIJ> points, circle;
 
-    const int n = 18, r = 30;
+    int nMin = 3, nMax = 20, rMax = 65;
     for (const auto &p : grid)
     {
+        const int n = randRange(nMin, nMax);
+        const int rMin = int(35.0f * (float(n) / nMax));
+        const int r = randRange(rMin, rMax);
+
         if (withCenters)
             circle = getPointsCircleCenter(n, r, p.j, p.i);
         else
@@ -122,6 +127,18 @@ std::vector<PointIJ> getPointsCirclesCircle(bool withCenters = false)
     return points;
 }
 
+std::vector<PointIJ> getPointsRandom()
+{
+    constexpr int n = 500;
+    std::vector<PointIJ> p;
+    for (int i = 0; i < n; ++i)
+    {
+        const short x = rand() % (1920 / 2), y = rand() % (1080 / 2);
+        p.emplace_back(y, x);
+    }
+    return p;
+}
+
 void showOnScreen(const cv::Mat &img, int delayMs = 1)
 {
     cv::imshow("vis", img);
@@ -132,7 +149,7 @@ void saveToDisk(const cv::Mat &img)
 {
     static int numFrames = 0;
     std::stringstream s;
-    s << R"(C:\all\projects\personal\3dvideo_data\article\animations\08_circles_grid\)";
+    s << R"(C:\all\projects\personal\3dvideo_data\article\animations\13_random\)";
     s << "frame_" << std::setw(8) << std::setfill('0') << numFrames << ".png";
     ++numFrames;
     const auto path = s.str();
@@ -161,7 +178,7 @@ protected:
     }
 
 private:
-    void pauseAtTheEnd(int fps = 60, int delaySeconds = 4)
+    void pauseAtTheEnd(int fps = 120, int delaySeconds = 4)
     {
         for (int i = 0; i < fps * delaySeconds; ++i)
             saveToDisk(*lastFrame);
@@ -177,12 +194,12 @@ int main()
 {
     using namespace std::placeholders;
 
-    auto points = getPointsCirclesGrid();
+    auto points = getPointsRandom();
     alignPoints(points);
     std::vector<short> indexMap(points.size());
 
     CancellationToken cancellationToken;
-    VisQueue q;
+    VisQueue q{ 2000 };
     Producer<VisQueue> visProducer(cancellationToken);
     visProducer.addQueue(&q);
 

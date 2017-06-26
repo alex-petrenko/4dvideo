@@ -1,0 +1,2 @@
+ffmpeg -framerate 45 -i frame_%08d.png out.gif
+ffmpeg -framerate 60 -i frame_%08d.png out.mp4

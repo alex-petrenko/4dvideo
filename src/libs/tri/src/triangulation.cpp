@@ -256,9 +256,9 @@ private:
     std::function<VisualizationCallback> visualizationCallback;
     cv::Mat triImg;
     float visScaleI = 1, visScaleJ = 1;
-    int visOfs = 0;
-    static constexpr int visW = 1600, visH = 900;
-    static constexpr bool visFixedResolution = false;
+    int visOfsI = 0, visOfsJ = 0;
+    static constexpr int visW = 1920, visH = 1080;
+    static constexpr bool visFixedResolution = true, visPreserveAspect = true;
 };
 
 
@@ -758,14 +758,14 @@ void Delaunay::DelaunayImpl::plotTriangulation(cv::Mat &img, EdgeIdx start, Edge
                 if (!visitedPoints[destPntIdx] || specialFace)
                 {
                     cv::line(img,
-                             cv::Point2i(int(currPnt.j * visScaleJ + visOfs), int(currPnt.i * visScaleI + visOfs)),
-                             cv::Point2i(int(destPnt.j * visScaleJ + visOfs), int(destPnt.i * visScaleI + visOfs)),
+                             cv::Point2i(int(currPnt.j * visScaleJ + visOfsJ), int(currPnt.i * visScaleI + visOfsI)),
+                             cv::Point2i(int(destPnt.j * visScaleJ + visOfsJ), int(destPnt.i * visScaleI + visOfsI)),
                              color,
                              thickness);
                 }
 
                 if (specialFace)
-                    cv::circle(img, cv::Point2i(int(currPnt.j * visScaleJ + visOfs), int(currPnt.i * visScaleI + visOfs)), 3, color, 3);
+                    cv::circle(img, cv::Point2i(int(currPnt.j * visScaleJ + visOfsJ), int(currPnt.i * visScaleI + visOfsI)), 3, color, 3);
 
                 if (!addedPoints[destPntIdx])
                 {
@@ -786,7 +786,7 @@ void Delaunay::DelaunayImpl::plotTriangulation(cv::Mat &img, EdgeIdx start, Edge
     for (int i = 0; i < totalNumPoints; ++i)
     {
         const PointIJ &p = P[i];
-        const cv::Point2i center{ int(p.j * visScaleJ + visOfs), int(p.i * visScaleI + visOfs) };
+        const cv::Point2i center{ int(p.j * visScaleJ + visOfsJ), int(p.i * visScaleI + visOfsI) };
         constexpr bool drawCircle = true;
         if (drawCircle)
             cv::circle(img, center, 1, pclr, 2);
@@ -835,6 +835,7 @@ void Delaunay::DelaunayImpl::visualize(VisTag tag, bool clean, EdgeIdx start, Ed
             triImg = cv::Mat::zeros(cv::Size(visW, visH), CV_8UC3);
             visScaleI = imgPercentage * (float(triImg.rows) / float(maxI));
             visScaleJ = imgPercentage * (float(triImg.cols) / float(maxJ));
+            visScaleI = visScaleJ = std::min(visScaleI, visScaleJ);
         }
         else
         {
@@ -843,7 +844,9 @@ void Delaunay::DelaunayImpl::visualize(VisTag tag, bool clean, EdgeIdx start, Ed
             visScaleI = visScaleJ = 1;
         }
 
-        visOfs = int((triImg.rows - maxI * visScaleI) / 2);  // margins
+        // margins
+        visOfsI = int((triImg.rows - maxI * visScaleI) / 2);
+        visOfsJ = int((triImg.cols - maxJ * visScaleJ) / 2);
     }
     else if (clean)
         memset(triImg.data, 0, triImg.total() * triImg.elemSize());
