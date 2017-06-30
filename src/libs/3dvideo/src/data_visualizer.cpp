@@ -1,3 +1,5 @@
+#include <iomanip>
+
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 
@@ -71,6 +73,8 @@ void DataVisualizer::init()
     ColorDataFormat cFormat;
     DepthDataFormat dFormat;
     sensorManager.getColorParams(colorCamera, cFormat), sensorManager.getDepthParams(depthCamera, dFormat);
+
+    numFrames = 0;
 }
 
 /// Visualizer uses OpenCV UI and thus requires this overload to be able to handle GUI events.
@@ -124,4 +128,28 @@ void DataVisualizer::process(std::shared_ptr<Frame> &frame)
     }
 
     cv::imshow(windowName, colorWithDepth);
+    if (saveToDisk)
+    {
+        constexpr char *path = R"(C:\temp\tst\anim\)";
+        std::ostringstream s;
+        s << path << std::setw(8) << std::setfill('0') << numFrames << "_frame.bmp";
+
+        cv::Mat depthPretty = cv::Mat::zeros(depth.rows, depth.cols, CV_8UC3), depthPrettyResized;
+        const cv::Vec3b close{ 0, 0, 0xff }, far{ 0xff, 0x00, 0x00 };
+        const uint16_t dMin = 800, dMax = 2500, dRange = dMax - dMin;
+        for (int i = 0; i < depth.rows; ++i)
+            for (int j = 0; j < depth.cols; ++j)
+            {
+                auto d = depth.at<uint16_t>(i, j);
+                if (!d)
+                    continue;
+                d = std::max(d, dMin), d = std::min(d, dMax);
+                const auto finalColor = (float(dMax - d) / dRange) * close + (float(d - dMin) / dRange) * far;
+                depthPretty.at<cv::Vec3b>(i, j) = finalColor;
+            }
+        cv::resize(depthPretty, depthPrettyResized, cv::Size(), 1, 1, cv::INTER_NEAREST);
+        cv::imwrite(s.str(), depthPrettyResized);
+    }
+
+    ++numFrames;
 }

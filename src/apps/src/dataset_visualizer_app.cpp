@@ -1,17 +1,26 @@
 #include <thread>
 
+#include <util/tiny_logger.hpp>
+
 #include <3dvideo/dataset_reader.hpp>
 #include <3dvideo/data_visualizer.hpp>
 
 
-int main()
+int main(int argc, char *argv[])
 {
+    const int minNumArgs = 2;
+    if (argc < minNumArgs)
+        TLOG(FATAL) << "Expected at least" << minNumArgs << " arguments, got " << argc;
+
+    int arg = 1;
+    const std::string datasetPath(argv[arg++]);
+
     CancellationToken cancellationToken;
     FrameQueue frameQueue;
 
     std::thread readerThread([&]
     {
-        DatasetReader reader(R"(C:\temp\tst\dataset.4dv)", cancellationToken);
+        DatasetReader reader(datasetPath, cancellationToken);
         reader.addQueue(&frameQueue);
         reader.init();
         reader.run();

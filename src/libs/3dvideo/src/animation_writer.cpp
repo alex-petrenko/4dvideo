@@ -21,7 +21,7 @@ AnimationWriter::~AnimationWriter()
 {
     TLOG(INFO);
 
-    timeframe << 0.033f << " " << lastMeshFilename << '\n';
+    timeframe << totalDelta / numFrames << " " << lastMeshFilename << '\n';
     timeframe.close();
 }
 
@@ -44,7 +44,7 @@ void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
 
     std::ostringstream filenamePrefix;
     filenamePrefix << std::setw(5) << std::setfill('0') << frame->frame2D->frameNumber << "_";
-    const std::string textureFilename = filenamePrefix.str() + "texture.jpg", meshFilename = filenamePrefix.str() + "mesh.ply";
+    const std::string meshFilename = filenamePrefix.str() + "mesh.ply";
 
     std::vector<cv::Point3f> points(frame->cloud);
     for (size_t i = 0; i < points.size(); ++i)
@@ -53,23 +53,32 @@ void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
         points[i].x *= -1, points[i].y *= -1;
     }
 
-    std::vector<cv::Point2f> uv(frame->uv.size());
-    for (size_t i = 0; i < uv.size(); ++i)
-        uv[i].x = frame->uv[i].x, uv[i].y = 1.0f - frame->uv[i].y;
+    const bool withColor = !frame->frame2D->color.empty();
+    if (withColor)
+    {
+        const std::string textureFilename = filenamePrefix.str() + "texture.jpg";
 
-    saveBinaryPly(pathJoin(outputPath, meshFilename), &points, &frame->triangles, &uv, &textureFilename);
+        std::vector<cv::Point2f> uv(frame->uv.size());
+        for (size_t i = 0; i < uv.size(); ++i)
+            uv[i].x = frame->uv[i].x, uv[i].y = 1.0f - frame->uv[i].y;
+        saveBinaryPly(pathJoin(outputPath, meshFilename), &points, &frame->triangles, &uv, &textureFilename);
 
-    cv::Mat finalTexture;
-    cv::resize(frame->frame2D->color, finalTexture, cv::Size(), 0.25, 0.25);
-    cv::imwrite(pathJoin(outputPath, textureFilename), finalTexture);
+        cv::Mat finalTexture;
+        cv::resize(frame->frame2D->color, finalTexture, cv::Size(), 0.25, 0.25);
+        cv::imwrite(pathJoin(outputPath, textureFilename), finalTexture);
+    }
+    else
+        saveBinaryPly(pathJoin(outputPath, meshFilename), &points, &frame->triangles);
 
     if (lastWrittenFrame != -1)
     {
         const auto timeDeltaSeconds = float(frame->frame2D->dTimestamp - lastFrameTimestamp) / 1000000;
         timeframe << timeDeltaSeconds << " " << lastMeshFilename << '\n';
+        totalDelta += timeDeltaSeconds;
     }
 
     lastFrameTimestamp = frame->frame2D->dTimestamp;
     lastWrittenFrame = frame->frame2D->frameNumber;
     lastMeshFilename = meshFilename;
+    ++numFrames;
 }

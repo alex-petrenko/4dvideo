@@ -139,6 +139,19 @@ std::vector<PointIJ> getPointsRandom()
     return p;
 }
 
+std::vector<PointIJ> getPointsDataset()
+{
+    const std::string imgPath = R"(C:\temp\tst\anim\00000001_frame.bmp)";
+    const auto img = cv::imread(imgPath, cv::IMREAD_UNCHANGED);
+    std::vector<PointIJ> p;
+    const cv::Vec3b zero{ 0, 0, 0 };
+    for (int i = 0; i < img.rows; ++i)
+        for (int j = 0; j < img.cols; ++j)
+            if (img.at<cv::Vec3b>(i, j) != zero)
+                p.emplace_back(i, j);
+    return p;
+}
+
 void showOnScreen(const cv::Mat &img, int delayMs = 1)
 {
     cv::imshow("vis", img);
@@ -149,7 +162,7 @@ void saveToDisk(const cv::Mat &img)
 {
     static int numFrames = 0;
     std::stringstream s;
-    s << R"(C:\all\projects\personal\3dvideo_data\article\animations\13_random\)";
+    s << R"(C:\all\projects\personal\3dvideo_data\article\animations\14_dataset\)";
     s << "frame_" << std::setw(8) << std::setfill('0') << numFrames << ".png";
     ++numFrames;
     const auto path = s.str();
@@ -194,7 +207,7 @@ int main()
 {
     using namespace std::placeholders;
 
-    auto points = getPointsRandom();
+    auto points = getPointsDataset();
     alignPoints(points);
     std::vector<short> indexMap(points.size());
 

@@ -101,6 +101,8 @@ void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTri
     frame.trianglesUv.resize(numTriangles);
     frame.trianglesNormals.resize(numTriangles);
 
+    const bool needNormals = frame.frame2D->color.empty();
+
     int j = 0;
     for (int i = 0; i < numTriangles; ++i)
     {
@@ -116,15 +118,12 @@ void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTri
         tuv.p2 = frame.uv[t.p2];
         tuv.p3 = frame.uv[t.p3];
 
-        if (filterTriangle(t3d.p1, t3d.p2, t3d.p3))
+        if (!skipFiltering && filterTriangle(t3d.p1, t3d.p2, t3d.p3))
             continue;
 
-        // TODO: need normals only when there's no texture
-        const bool needNormals = false;
         if (needNormals)
         {
             const cv::Point3f n = triNormal(t3d.p1, t3d.p2, t3d.p3);
-            // all three points have same normal TODO: optimize
             tn.p1 = tn.p2 = tn.p3 = n;
         }
 
@@ -136,6 +135,7 @@ void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTri
 
 void Mesher::fillDataIndexedMode(MeshFrame &frame, Triangle *triangles, int numTriangles)
 {
+    const bool needNormals = frame.frame2D->color.empty();
     frame.normals.resize(frame.cloud.size());
 
     for (int i = 0; i < numTriangles; ++i)
@@ -144,10 +144,13 @@ void Mesher::fillDataIndexedMode(MeshFrame &frame, Triangle *triangles, int numT
         const auto &p1 = frame.cloud[t.p1];
         const auto &p2 = frame.cloud[t.p2];
         const auto &p3 = frame.cloud[t.p3];
-        if (filterTriangle(p1, p2, p3))
+        if (!skipFiltering && filterTriangle(p1, p2, p3))
             continue;
 
         frame.triangles.emplace_back(t);
+
+        if (needNormals)
+            frame.normals[t.p1] = frame.normals[t.p2] = frame.normals[t.p3] = triNormal(p1, p2, p3);
     }
 }
 
@@ -182,6 +185,7 @@ void Mesher::process(std::shared_ptr<Frame> &frame2D)
     tprof().stopTimer("triangulation");
 
     // generate uv coordinates by reprojecting 3D points onto color image plane
+    if (!frame2D->color.empty())
     {
         int iImg, jImg;
         uint16_t d;

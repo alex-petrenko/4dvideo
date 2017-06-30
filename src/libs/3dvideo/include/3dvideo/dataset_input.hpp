@@ -53,6 +53,8 @@ private:
     bool readFrameField(Frame &frame, Field &field);
 
 private:
+    static constexpr bool withColor = false;
+
     bool isFinished = false;
     std::ifstream in;
     std::map<Field, FieldParser> metadataParsers;

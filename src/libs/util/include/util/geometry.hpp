@@ -148,7 +148,7 @@ FORCE_INLINE bool inCircle(int x1, int y1, int x2, int y2, int x3, int y3, int p
     return res < 0;
 }
 
-inline cv::Point3f triNormal(cv::Point3f &v1, cv::Point3f &v2, cv::Point3f &v3)
+inline cv::Point3f triNormal(const cv::Point3f &v1, const cv::Point3f &v2, const cv::Point3f &v3)
 {
     cv::Point3f n = ((v3 - v1).cross(v2 - v1));
     n *= 1.0f / cv::norm(n);

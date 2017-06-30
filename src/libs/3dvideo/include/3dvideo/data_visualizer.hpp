@@ -21,6 +21,8 @@ private:
 
 private:
     CameraParams colorCamera, depthCamera;
+    int numFrames = 0;
 
     static constexpr char *windowName = "Sensor realtime data";
+    static constexpr bool saveToDisk = false;
 };

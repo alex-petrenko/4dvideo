@@ -24,4 +24,7 @@ private:
     int lastWrittenFrame = -1;
     int64_t lastFrameTimestamp = -1;
     std::string lastMeshFilename;
+
+    float totalDelta = 0;
+    int numFrames = 0;
 };

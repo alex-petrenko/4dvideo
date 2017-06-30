@@ -66,8 +66,8 @@ const char *fragmentShader =
 "{"
 "    vec3 lightPos = vec3(0, 0, 3);"
 "    vec3 lightDirection = normalize(lightPos - v);"
-// "    color = vec4(0.3, 0.3, 0.3, 0.0) + vec4(vec3(0.5, 0.5, 0.5) * max(float(dot(normal, lightDirection)), 0.0), 1.0);"
-"    color = texture(textureSampler, uv).rgb;"
+"    color = vec3(0.3, 0.3, 0.3) + vec3(0.5, 0.5, 0.5) * max(float(dot(normal, lightDirection)), 0.0);"
+//"    color = texture(textureSampler, uv).rgb;"
 "}";
 
 }
@@ -207,7 +207,8 @@ public:
         if (!currentFrame)
             return false;
 
-        const auto targetPlaybackTimeUs = double(currentFrame->frame2D->dTimestamp - firstFrameTimestamp);
+        constexpr double speedup = 1;
+        const auto targetPlaybackTimeUs = double(currentFrame->frame2D->dTimestamp - firstFrameTimestamp) / speedup;
         const auto passedTimeUs = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - playbackStarted).count();
         return passedTimeUs >= targetPlaybackTimeUs;
     }
@@ -314,9 +315,12 @@ public:
                 glBufferData(GL_ARRAY_BUFFER, numElements * sizeof(TriangleUV), frameToDraw->trianglesUv.data(), GL_DYNAMIC_DRAW);
             }
 
-            // loading texture data to GPU
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frame2D->color.cols, frame2D->color.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, frame2D->color.data);
-            glGenerateMipmap(GL_TEXTURE_2D);
+            if (!frame2D->color.empty())
+            {
+                // loading texture data to GPU
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frame2D->color.cols, frame2D->color.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, frame2D->color.data);
+                glGenerateMipmap(GL_TEXTURE_2D);
+            }
 
             frameToDraw.reset();
         }

@@ -17,7 +17,7 @@ namespace
 {
 
 // Visualization helpers. All visualization functionality must be disabled when performance is the goal.
-#define WITH_VIS 1
+#define WITH_VIS 0
 
 enum class VisTag
 {
@@ -480,7 +480,7 @@ FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeI
             if (inCircle(destPnt(base), E[base].origPnt, destPnt(lCand), destPnt(nextLCand)))
             {
                 assert(isRightOf(destPnt(nextLCand), base));
-                VIS_NFRAMES(2, VisTag::FIND_CANDIDATES, INVALID_EDGE, INVALID_EDGE, base, lCand);
+                VIS(VisTag::FIND_CANDIDATES, INVALID_EDGE, INVALID_EDGE, base, lCand);
                 deleteEdge(lCand);
                 lCand = nextLCand;
                 VIS(VisTag::FIND_CANDIDATES, lCand, INVALID_EDGE, base);
@@ -501,7 +501,7 @@ FORCE_INLINE void Delaunay::DelaunayImpl::mergeTriangulations(EdgeIdx lle, EdgeI
             const EdgeIdx nextRCand = E[rCand].prevCcwEdge;
             if (inCircle(destPnt(base), E[base].origPnt, destPnt(rCand), destPnt(nextRCand)))
             {
-                VIS_NFRAMES(2, VisTag::FIND_CANDIDATES, lCand, INVALID_EDGE, base, rCand);
+                VIS(VisTag::FIND_CANDIDATES, lCand, INVALID_EDGE, base, rCand);
                 deleteEdge(rCand);
                 rCand = nextRCand;
                 VIS(VisTag::FIND_CANDIDATES, lCand, rCand, base);
@@ -787,7 +787,7 @@ void Delaunay::DelaunayImpl::plotTriangulation(cv::Mat &img, EdgeIdx start, Edge
     {
         const PointIJ &p = P[i];
         const cv::Point2i center{ int(p.j * visScaleJ + visOfsJ), int(p.i * visScaleI + visOfsI) };
-        constexpr bool drawCircle = true;
+        constexpr bool drawCircle = false;
         if (drawCircle)
             cv::circle(img, center, 1, pclr, 2);
         else

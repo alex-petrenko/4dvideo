@@ -34,15 +34,24 @@ DatasetInput::DatasetInput(const std::string &path)
     cr[ColorDataFormat::BGR] = [&](Frame &f)
     {
         f.color = cv::Mat(meta.color.h, meta.color.w, CV_8UC3);
-        return bool(in.read((char *)f.color.data, f.color.total() * f.color.elemSize()));
+        const bool status = bool(in.read((char *)f.color.data, f.color.total() * f.color.elemSize()));
+        if (!withColor)
+            f.color = cv::Mat();
+        return status;
     };
     cr[ColorDataFormat::YUV_NV21] = [&](Frame &f)
     {
         // WARNING! Not thread safe (but helps reduce dynamic memory allocation).
         static auto yuvImg = cv::Mat(3 * meta.color.h / 2, meta.color.w, CV_8UC1);
         const bool ok = bool(in.read((char *)yuvImg.data, yuvImg.total() * yuvImg.elemSize()));
-        // Rather inefficient to convert each frame, but it's easier to work with. Will optimize if required.
-        cv::cvtColor(yuvImg, f.color, cv::COLOR_YUV2BGR_NV21);
+        if (withColor)
+        {
+            // Rather inefficient to convert each frame, but it's easier to work with. Will optimize if required.
+            cv::cvtColor(yuvImg, f.color, cv::COLOR_YUV2BGR_NV21);
+        }
+        else
+            f.color = cv::Mat();
+
         return ok;
     };
 

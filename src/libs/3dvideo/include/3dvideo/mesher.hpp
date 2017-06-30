@@ -26,6 +26,8 @@ private:
     void fillDataIndexedMode(MeshFrame &frame, Triangle *triangles, int numTriangles);
 
 private:
+    constexpr static bool skipFiltering = false;
+
     MeshFrameProducer &output;
 
     Delaunay delaunay;
