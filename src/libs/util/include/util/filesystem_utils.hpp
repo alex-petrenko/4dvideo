@@ -37,6 +37,7 @@ std::string pathJoin(Args... args)
 }
 
 /// Returns number of bytes read.
+size_t readAllBytes(const std::string &filename, std::vector<char> &buffer);
 size_t readAllBytes(std::ifstream &stream, std::vector<char> &buffer);
 
 /// Actually checks if file is accessible.

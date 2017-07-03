@@ -4,10 +4,11 @@
 #include <3dvideo/dataset_reader.hpp>
 
 
-DatasetReader::DatasetReader(const std::string &path, const CancellationToken &cancellationToken)
+DatasetReader::DatasetReader(const std::string &path, bool readColor, const CancellationToken &cancellationToken)
     : FrameProducer(cancellationToken)
+    , withColor(readColor)
     , path(path)
-    , dataset(std::make_shared<DatasetInput>(path))
+    , dataset(std::make_shared<DatasetInput>(path, readColor))
 {
     TLOG(INFO) << "Dataset: " << path;
 }
@@ -65,7 +66,7 @@ void DatasetReader::runLoop()
         run();
 
         initialized = false;
-        dataset = std::make_shared<DatasetInput>(path);
+        dataset = std::make_shared<DatasetInput>(path, withColor);
         init();
     }
 }

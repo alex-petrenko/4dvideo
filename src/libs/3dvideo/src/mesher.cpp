@@ -14,11 +14,20 @@ using namespace std::chrono_literals;
 namespace
 {
 
-bool filterTriangle(const cv::Point3f &p1, const cv::Point3f &p2, const cv::Point3f &p3)
+/// Filter triangles with too much projection area.
+bool filterTriangle2D(const PointIJ &a, const PointIJ &b, const PointIJ &c)
 {
-    constexpr float sideLengthThreshold = 0.07f;  // in meters
-    constexpr float zThreshold = 0.05f;
+    const cv::Point2f p1(a.j, a.i), p2(b.j, b.i), p3(c.j, c.i);
+    constexpr double sideLengthThreshold2D = targetScreenWidth * 0.025;  // in pixels
+    if (cv::norm(p2 - p1) > sideLengthThreshold2D) return true;
+    if (cv::norm(p3 - p2) > sideLengthThreshold2D) return true;
+    if (cv::norm(p1 - p3) > sideLengthThreshold2D) return true;
+    return false;
+}
 
+bool filterTriangle3D(const cv::Point3f &p1, const cv::Point3f &p2, const cv::Point3f &p3)
+{
+    constexpr float zThreshold = 0.05f;  // meters
     float maxZ = p1.z;
     maxZ = std::max(maxZ, p2.z);
     maxZ = std::max(maxZ, p3.z);
@@ -28,13 +37,10 @@ bool filterTriangle(const cv::Point3f &p1, const cv::Point3f &p2, const cv::Poin
     if (maxZ - minZ > zThreshold)
         return true;
 
-    const float a = float(cv::norm(p2 - p1));
-    if (a > sideLengthThreshold) return true;
-    const float b = float(cv::norm(p3 - p2));
-    if (b > sideLengthThreshold) return true;
-    const float c = float(cv::norm(p1 - p3));
-    if (c > sideLengthThreshold) return true;
-
+    constexpr double sideLengthThreshold = 0.07;  // in meters
+    if (cv::norm(p2 - p1) > sideLengthThreshold) return true;
+    if (cv::norm(p3 - p2) > sideLengthThreshold) return true;
+    if (cv::norm(p1 - p3) > sideLengthThreshold) return true;
     return false;
 }
 
@@ -95,7 +101,7 @@ void Mesher::fillPoints(const std::vector<cv::Point3f> &frameCloud, std::vector<
         }
 }
 
-void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTriangles)
+void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTriangles, const std::vector<PointIJ> &points)
 {
     frame.triangles3D.resize(numTriangles);
     frame.trianglesUv.resize(numTriangles);
@@ -106,11 +112,13 @@ void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTri
     int j = 0;
     for (int i = 0; i < numTriangles; ++i)
     {
+        const Triangle &t = triangles[i];
+        if (!skipFiltering && filterTriangle2D(points[t.p1], points[t.p2], points[t.p3]))
+            continue;
+
         Triangle3D &t3d = frame.triangles3D[j];
         TriangleUV &tuv = frame.trianglesUv[j];
         Triangle3D &tn = frame.trianglesNormals[j];
-        const Triangle &t = triangles[i];
-
         t3d.p1 = frame.cloud[t.p1];
         t3d.p2 = frame.cloud[t.p2];
         t3d.p3 = frame.cloud[t.p3];
@@ -118,7 +126,7 @@ void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTri
         tuv.p2 = frame.uv[t.p2];
         tuv.p3 = frame.uv[t.p3];
 
-        if (!skipFiltering && filterTriangle(t3d.p1, t3d.p2, t3d.p3))
+        if (!skipFiltering && filterTriangle3D(t3d.p1, t3d.p2, t3d.p3))
             continue;
 
         if (needNormals)
@@ -133,7 +141,7 @@ void Mesher::fillDataArrayMode(MeshFrame &frame, Triangle *triangles, int numTri
     frame.num3DTriangles = j;
 }
 
-void Mesher::fillDataIndexedMode(MeshFrame &frame, Triangle *triangles, int numTriangles)
+void Mesher::fillDataIndexedMode(MeshFrame &frame, Triangle *triangles, int numTriangles, const std::vector<PointIJ> &points)
 {
     const bool needNormals = frame.frame2D->color.empty();
     frame.normals.resize(frame.cloud.size());
@@ -141,10 +149,13 @@ void Mesher::fillDataIndexedMode(MeshFrame &frame, Triangle *triangles, int numT
     for (int i = 0; i < numTriangles; ++i)
     {
         const Triangle &t = triangles[i];
+        if (!skipFiltering && filterTriangle2D(points[t.p1], points[t.p2], points[t.p3]))
+            continue;
+
         const auto &p1 = frame.cloud[t.p1];
         const auto &p2 = frame.cloud[t.p2];
         const auto &p3 = frame.cloud[t.p3];
-        if (!skipFiltering && filterTriangle(p1, p2, p3))
+        if (!skipFiltering && filterTriangle3D(p1, p2, p3))
             continue;
 
         frame.triangles.emplace_back(t);
@@ -209,9 +220,9 @@ void Mesher::process(std::shared_ptr<Frame> &frame2D)
 
     meshFrame->indexedMode = true;
     if (meshFrame->indexedMode)
-        fillDataIndexedMode(*meshFrame, triangles, numTriangles);
+        fillDataIndexedMode(*meshFrame, triangles, numTriangles, points);
     else
-        fillDataArrayMode(*meshFrame, triangles, numTriangles);
+        fillDataArrayMode(*meshFrame, triangles, numTriangles, points);
 
     tprof().stopTimer("meshing");
     tprof().stopTimer("mesher_frame");

@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 
     std::thread readerThread([&]
     {
-        DatasetReader reader(datasetPath, cancellationToken);
+        DatasetReader reader(datasetPath, true, cancellationToken);
         reader.addQueue(&frameQueue);
         reader.init();
         reader.runLoop();

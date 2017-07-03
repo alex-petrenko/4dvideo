@@ -5,8 +5,9 @@
 #include <3dvideo/dataset_input.hpp>
 
 
-DatasetInput::DatasetInput(const std::string &path)
-    : in(path, std::ios::binary)
+DatasetInput::DatasetInput(const std::string &path, bool readColor)
+    : withColor(readColor)
+    , in(path, std::ios::binary)
 {
     // metadata parsers
     auto &mp = metadataParsers;

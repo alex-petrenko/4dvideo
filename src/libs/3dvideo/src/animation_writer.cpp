@@ -43,8 +43,8 @@ void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
     TLOG(INFO) << "timeframe animation, frame #" << frame->frame2D->frameNumber;
 
     std::ostringstream filenamePrefix;
-    filenamePrefix << std::setw(5) << std::setfill('0') << frame->frame2D->frameNumber << "_";
-    const std::string meshFilename = filenamePrefix.str() + "mesh.ply";
+    filenamePrefix << std::setw(4) << std::setfill('0') << frame->frame2D->frameNumber;
+    const std::string meshFilename = filenamePrefix.str() + ".ply";
 
     std::vector<cv::Point3f> points(frame->cloud);
     for (size_t i = 0; i < points.size(); ++i)
@@ -56,7 +56,7 @@ void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
     const bool withColor = !frame->frame2D->color.empty();
     if (withColor)
     {
-        const std::string textureFilename = filenamePrefix.str() + "texture.jpg";
+        const std::string textureFilename = filenamePrefix.str() + ".jpg";
 
         std::vector<cv::Point2f> uv(frame->uv.size());
         for (size_t i = 0; i < uv.size(); ++i)
@@ -64,7 +64,7 @@ void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
         saveBinaryPly(pathJoin(outputPath, meshFilename), &points, &frame->triangles, &uv, &textureFilename);
 
         cv::Mat finalTexture;
-        cv::resize(frame->frame2D->color, finalTexture, cv::Size(), 0.25, 0.25);
+        cv::resize(frame->frame2D->color, finalTexture, cv::Size(), 0.25, 0.25, CV_INTER_CUBIC);
         cv::imwrite(pathJoin(outputPath, textureFilename), finalTexture);
     }
     else
@@ -73,7 +73,7 @@ void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
     if (lastWrittenFrame != -1)
     {
         const auto timeDeltaSeconds = float(frame->frame2D->dTimestamp - lastFrameTimestamp) / 1000000;
-        timeframe << timeDeltaSeconds << " " << lastMeshFilename << '\n';
+        timeframe << std::setprecision(3) << timeDeltaSeconds << " " << lastMeshFilename << '\n';
         totalDelta += timeDeltaSeconds;
     }
 

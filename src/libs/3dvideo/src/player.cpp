@@ -59,6 +59,7 @@ const char *fragmentShader =
 "in vec2 uv;"
 ""
 "uniform sampler2D textureSampler;"
+"uniform bool withColor;"
 ""
 "out vec3 color;"
 ""
@@ -66,8 +67,16 @@ const char *fragmentShader =
 "{"
 "    vec3 lightPos = vec3(0, 0, 3);"
 "    vec3 lightDirection = normalize(lightPos - v);"
-"    color = vec3(0.3, 0.3, 0.3) + vec3(0.5, 0.5, 0.5) * max(float(dot(normal, lightDirection)), 0.0);"
-//"    color = texture(textureSampler, uv).rgb;"
+"    vec3 finalColor;"
+"    if (withColor)"
+"    {"
+"        finalColor = texture(textureSampler, uv).rgb;"
+"    }"
+"    else"
+"    {"
+"        finalColor = vec3(0.3, 0.3, 0.3) + vec3(0.5, 0.5, 0.5) * max(float(dot(normal, lightDirection)), 0.0);"
+"    }"
+"    color = finalColor;"
 "}";
 
 }
@@ -132,14 +141,12 @@ public:
         glBindVertexArray(vertexArrayID);
 
         glGenBuffers(1, &vertexBuffer);
-        //glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
         glGenBuffers(1, &normalBuffer);
-        //glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
         glGenBuffers(1, &uvBuffer);
-        //glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
         glGenBuffers(1, &indexBuffer);
 
         transformUniformID = glGetUniformLocation(program, "transform");
+        withColorHandle = glGetUniformLocation(program, "withColor");
 
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D, texture);
@@ -288,6 +295,7 @@ public:
             indexedMode = frameToDraw->indexedMode;
 
             auto &frame2D = frameToDraw->frame2D;
+            withColor = !frame2D->color.empty();
             glBindVertexArray(vertexArrayID);
 
             if (indexedMode)
@@ -298,10 +306,13 @@ public:
                 glBufferData(GL_ARRAY_BUFFER, frameToDraw->cloud.size() * sizeof(cv::Point3f), frameToDraw->cloud.data(), GL_DYNAMIC_DRAW);
                 glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
                 glBufferData(GL_ARRAY_BUFFER, frameToDraw->normals.size() * sizeof(cv::Point3f), frameToDraw->normals.data(), GL_DYNAMIC_DRAW);
-                glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
-                glBufferData(GL_ARRAY_BUFFER, frameToDraw->uv.size() * sizeof(cv::Point2f), frameToDraw->uv.data(), GL_DYNAMIC_DRAW);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
                 glBufferData(GL_ELEMENT_ARRAY_BUFFER, frameToDraw->triangles.size() * sizeof(Triangle), frameToDraw->triangles.data(), GL_DYNAMIC_DRAW);
+                if (withColor)
+                {
+                    glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
+                    glBufferData(GL_ARRAY_BUFFER, frameToDraw->uv.size() * sizeof(cv::Point2f), frameToDraw->uv.data(), GL_DYNAMIC_DRAW);
+                }
             }
             else
             {
@@ -311,11 +322,15 @@ public:
                 glBufferData(GL_ARRAY_BUFFER, numElements * sizeof(Triangle3D), frameToDraw->triangles3D.data(), GL_DYNAMIC_DRAW);
                 glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
                 glBufferData(GL_ARRAY_BUFFER, numElements * sizeof(Triangle3D), frameToDraw->trianglesNormals.data(), GL_DYNAMIC_DRAW);
-                glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
-                glBufferData(GL_ARRAY_BUFFER, numElements * sizeof(TriangleUV), frameToDraw->trianglesUv.data(), GL_DYNAMIC_DRAW);
+                if (withColor)
+                {
+                    glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
+                    glBufferData(GL_ARRAY_BUFFER, numElements * sizeof(TriangleUV), frameToDraw->trianglesUv.data(), GL_DYNAMIC_DRAW);
+                }
             }
 
-            if (!frame2D->color.empty())
+            glUniform1i(withColorHandle, withColor);
+            if (withColor)
             {
                 // loading texture data to GPU
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frame2D->color.cols, frame2D->color.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, frame2D->color.data);
@@ -353,16 +368,19 @@ public:
             (void*)0            // array buffer offset
         );
 
-        glEnableVertexAttribArray(2);
-        glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
-        glVertexAttribPointer(
-            2,
-            2,                  // size (2 floats for uv)
-            GL_FLOAT,           // type
-            GL_FALSE,           // normalized?
-            0,                  // stride
-            (void*)0            // array buffer offset
-        );
+        if (withColor)
+        {
+            glEnableVertexAttribArray(2);
+            glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
+            glVertexAttribPointer(
+                2,
+                2,                  // size (2 floats for uv)
+                GL_FLOAT,           // type
+                GL_FALSE,           // normalized?
+                0,                  // stride
+                (void*)0            // array buffer offset
+            );
+        }
 
         if (indexedMode)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -396,6 +414,7 @@ private:
     GLuint vertexBuffer, normalBuffer, uvBuffer, indexBuffer;
     GLint transformUniformID;
     GLuint texture;
+    GLint withColorHandle;
 
     glm::mat4 scaleMatrix, rotation, translationMatrix;
     glm::mat4 mvp;
@@ -413,7 +432,9 @@ private:
     std::chrono::time_point<std::chrono::system_clock> playbackStarted;
 
     std::shared_ptr<MeshFrame> currentFrame, frameToDraw;
-    
+
+    bool withColor = false;
+
     // camera and screen
 
     CameraParams depthCam;

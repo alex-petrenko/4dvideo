@@ -1,0 +1,3 @@
+04_first_realsense_cvt.4dv
+    const uint16_t minDepth = 500, maxDepth = 1100, purgeR = 3;
+    const uint16_t curvatureThresholdMm = 12;

@@ -35,7 +35,7 @@ TEST_F(binaryDataset, readWrite)
         writer.run();
     });
 
-    DatasetReader reader(testDataset, cancellationToken);
+    DatasetReader reader(testDataset, true, cancellationToken);
     reader.addQueue(&queue);
     reader.init();
     reader.run();

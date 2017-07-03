@@ -7,7 +7,7 @@
 class DatasetReader : public FrameProducer
 {
 public:
-    DatasetReader(const std::string &path, const CancellationToken &cancellationToken);
+    DatasetReader(const std::string &path, bool readColor, const CancellationToken &cancellationToken);
     virtual ~DatasetReader();
 
     void init();
@@ -18,6 +18,7 @@ public:
     virtual void runLoop();
 
 private:
+    bool withColor;
     bool initialized = false;
     std::string path;
     std::shared_ptr<DatasetInput> dataset;

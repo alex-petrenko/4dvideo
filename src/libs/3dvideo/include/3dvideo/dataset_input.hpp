@@ -26,7 +26,7 @@ class DatasetInput
     typedef std::function<bool(Frame &)> FrameFieldParser;
 
 public:
-    DatasetInput(const std::string &path);
+    DatasetInput(const std::string &path, bool readColor);
     ~DatasetInput();
 
     Status readHeader();
@@ -53,8 +53,7 @@ private:
     bool readFrameField(Frame &frame, Field &field);
 
 private:
-    static constexpr bool withColor = false;
-
+    bool withColor;
     bool isFinished = false;
     std::ifstream in;
     std::map<Field, FieldParser> metadataParsers;
