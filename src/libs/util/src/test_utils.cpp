@@ -5,7 +5,7 @@
 namespace
 {
 
-const char *testFolderEnvVar = "TEST_DATA_PATH_3DVIDEO";
+const char *testFolderEnvVar = "TEST_DATA_PATH_4DVIDEO";
 
 }
 

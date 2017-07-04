@@ -1,7 +1,7 @@
 #pragma once
 
-#include <3dvideo/frame.hpp>
-#include <3dvideo/dataset_input.hpp>
+#include <4d/frame.hpp>
+#include <4d/dataset_input.hpp>
 
 
 class DatasetReader : public FrameProducer

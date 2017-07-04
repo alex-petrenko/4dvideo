@@ -162,7 +162,7 @@ void saveToDisk(const cv::Mat &img)
 {
     static int numFrames = 0;
     std::stringstream s;
-    s << R"(C:\all\projects\personal\3dvideo_data\article\animations\14_dataset\)";
+    s << R"(C:\all\projects\personal\4dvideo_data\article\animations\14_dataset\)";
     s << "frame_" << std::setw(8) << std::setfill('0') << numFrames << ".png";
     ++numFrames;
     const auto path = s.str();

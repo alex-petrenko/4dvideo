@@ -2,7 +2,7 @@
 
 #include <util/tiny_logger.hpp>
 
-#include <3dvideo/dataset_input.hpp>
+#include <4d/dataset_input.hpp>
 
 
 DatasetInput::DatasetInput(const std::string &path, bool readColor)

@@ -7,7 +7,7 @@
 #include <util/tiny_logger.hpp>
 #include <util/filesystem_utils.hpp>
 
-#include <3dvideo/animation_writer.hpp>
+#include <4d/animation_writer.hpp>
 
 
 AnimationWriter::AnimationWriter(const std::string &outputPath, MeshFrameQueue &q, CancellationToken &cancellationToken)

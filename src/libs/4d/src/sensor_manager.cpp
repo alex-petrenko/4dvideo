@@ -1,4 +1,4 @@
-#include <3dvideo/sensor_manager.hpp>
+#include <4d/sensor_manager.hpp>
 
 
 void SensorManager::setColorParams(const CameraParams &colorCamera, ColorDataFormat format)

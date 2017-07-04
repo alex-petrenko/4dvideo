@@ -2,8 +2,8 @@
 
 #include <util/tiny_logger.hpp>
 
-#include <3dvideo/dataset_reader.hpp>
-#include <3dvideo/data_visualizer.hpp>
+#include <4d/dataset_reader.hpp>
+#include <4d/data_visualizer.hpp>
 
 
 int main(int argc, char *argv[])

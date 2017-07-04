@@ -1,7 +1,7 @@
 #include <util/tiny_logger.hpp>
 
-#include <3dvideo/app_state.hpp>
-#include <3dvideo/dataset_reader.hpp>
+#include <4d/app_state.hpp>
+#include <4d/dataset_reader.hpp>
 
 
 DatasetReader::DatasetReader(const std::string &path, bool readColor, const CancellationToken &cancellationToken)

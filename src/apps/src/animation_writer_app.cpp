@@ -2,11 +2,11 @@
 
 #include <util/tiny_logger.hpp>
 
-#include <3dvideo/mesher.hpp>
-#include <3dvideo/player.hpp>
-#include <3dvideo/depth_filter.hpp>
-#include <3dvideo/dataset_reader.hpp>
-#include <3dvideo/animation_writer.hpp>
+#include <4d/mesher.hpp>
+#include <4d/player.hpp>
+#include <4d/depth_filter.hpp>
+#include <4d/dataset_reader.hpp>
+#include <4d/animation_writer.hpp>
 
 
 int main(int argc, char *argv[])

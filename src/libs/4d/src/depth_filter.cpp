@@ -8,9 +8,9 @@
 #include <util/tiny_logger.hpp>
 #include <util/tiny_profiler.hpp>
 
-#include <3dvideo/params.hpp>
-#include <3dvideo/app_state.hpp>
-#include <3dvideo/depth_filter.hpp>
+#include <4d/params.hpp>
+#include <4d/app_state.hpp>
+#include <4d/depth_filter.hpp>
 
 
 using namespace std::chrono_literals;

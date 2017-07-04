@@ -4,9 +4,9 @@
 
 #include <util/enum.hpp>
 
-#include <3dvideo/frame.hpp>
-#include <3dvideo/format.hpp>
-#include <3dvideo/sensor_manager.hpp>
+#include <4d/frame.hpp>
+#include <4d/format.hpp>
+#include <4d/sensor_manager.hpp>
 
 
 class DatasetOutput

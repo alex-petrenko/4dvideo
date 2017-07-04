@@ -7,8 +7,8 @@
 #include <util/enum.hpp>
 #include <util/camera.hpp>
 
-#include <3dvideo/frame.hpp>
-#include <3dvideo/format.hpp>
+#include <4d/frame.hpp>
+#include <4d/format.hpp>
 
 
 struct DatasetMetadata

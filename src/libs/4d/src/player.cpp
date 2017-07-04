@@ -13,8 +13,8 @@
 
 #include <tri/triangulation.hpp>
 
-#include <3dvideo/player.hpp>
-#include <3dvideo/app_state.hpp>
+#include <4d/player.hpp>
+#include <4d/app_state.hpp>
 
 
 using namespace std::chrono_literals;

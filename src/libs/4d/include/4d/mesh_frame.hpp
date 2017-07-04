@@ -2,7 +2,7 @@
 
 #include <tri/triangulation.hpp>
 
-#include <3dvideo/frame.hpp>
+#include <4d/frame.hpp>
 
 
 struct Triangle3D  // <-- temporary slow version, should replace with indexed mode

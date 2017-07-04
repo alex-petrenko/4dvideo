@@ -4,8 +4,8 @@
 #include <util/tiny_logger.hpp>
 #include <util/filesystem_utils.hpp>
 
-#include <3dvideo/dataset_writer.hpp>
-#include <3dvideo/data_visualizer.hpp>
+#include <4d/dataset_writer.hpp>
+#include <4d/data_visualizer.hpp>
 
 #include <realsense/realsense_grabber.hpp>
 
