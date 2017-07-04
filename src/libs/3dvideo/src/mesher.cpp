@@ -4,6 +4,7 @@
 #include <util/tiny_profiler.hpp>
 
 #include <3dvideo/mesher.hpp>
+#include <3dvideo/params.hpp>
 #include <3dvideo/player.hpp>
 #include <3dvideo/app_state.hpp>
 
@@ -18,16 +19,16 @@ namespace
 bool filterTriangle2D(const PointIJ &a, const PointIJ &b, const PointIJ &c)
 {
     const cv::Point2f p1(a.j, a.i), p2(b.j, b.i), p3(c.j, c.i);
-    constexpr double sideLengthThreshold2D = targetScreenWidth * 0.025;  // in pixels
-    if (cv::norm(p2 - p1) > sideLengthThreshold2D) return true;
-    if (cv::norm(p3 - p2) > sideLengthThreshold2D) return true;
-    if (cv::norm(p1 - p3) > sideLengthThreshold2D) return true;
+    const double threshold = mesherParams().sideLengthThreshold2D;
+    if (cv::norm(p2 - p1) > threshold) return true;
+    if (cv::norm(p3 - p2) > threshold) return true;
+    if (cv::norm(p1 - p3) > threshold) return true;
     return false;
 }
 
 bool filterTriangle3D(const cv::Point3f &p1, const cv::Point3f &p2, const cv::Point3f &p3)
 {
-    constexpr float zThreshold = 0.05f;  // meters
+    const float zThreshold = mesherParams().zThreshold;
     float maxZ = p1.z;
     maxZ = std::max(maxZ, p2.z);
     maxZ = std::max(maxZ, p3.z);
@@ -37,10 +38,10 @@ bool filterTriangle3D(const cv::Point3f &p1, const cv::Point3f &p2, const cv::Po
     if (maxZ - minZ > zThreshold)
         return true;
 
-    constexpr double sideLengthThreshold = 0.07;  // in meters
-    if (cv::norm(p2 - p1) > sideLengthThreshold) return true;
-    if (cv::norm(p3 - p2) > sideLengthThreshold) return true;
-    if (cv::norm(p1 - p3) > sideLengthThreshold) return true;
+    const double sideLengthThreshold3D = mesherParams().sideLengthThreshold3D;
+    if (cv::norm(p2 - p1) > sideLengthThreshold3D) return true;
+    if (cv::norm(p3 - p2) > sideLengthThreshold3D) return true;
+    if (cv::norm(p1 - p3) > sideLengthThreshold3D) return true;
     return false;
 }
 

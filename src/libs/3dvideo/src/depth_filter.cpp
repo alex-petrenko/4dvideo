@@ -8,6 +8,7 @@
 #include <util/tiny_logger.hpp>
 #include <util/tiny_profiler.hpp>
 
+#include <3dvideo/params.hpp>
 #include <3dvideo/app_state.hpp>
 #include <3dvideo/depth_filter.hpp>
 
@@ -40,8 +41,8 @@ void DepthFilter::process(std::shared_ptr<Frame> &frame)
     if (skipFiltering)
         return;
 
-    const uint16_t minDepth = 500, maxDepth = 1100, purgeR = 3;
-    const uint16_t curvatureThresholdMm = 12;
+    const uint16_t minDepth = filterParams().minDepthMm, maxDepth = filterParams().maxDepthMm, curvatureThreshold = filterParams().curvatureThresholdMm;
+    const int purgeR = filterParams().purgeRadius;
     const cv::Point3f *translation = reinterpret_cast<cv::Point3f *>(calibration.tvec.data);
     cv::Mat &depth = frame->depth;
     cv::Mat mask = cv::Mat::zeros(depth.rows, depth.cols, CV_8UC1);
@@ -69,7 +70,7 @@ void DepthFilter::process(std::shared_ptr<Frame> &frame)
                 {
                     const uint16_t deltaMm = uint16_t(std::abs(depth.at<uint16_t>(i + di, j + dj) - d));
                     maxDeltaMm = std::max(maxDeltaMm, deltaMm);
-                    if (deltaMm > curvatureThresholdMm)
+                    if (deltaMm > curvatureThreshold)
                     {
                         mask.at<uchar>(i, j) = 0xff;
                         masked = true;
@@ -118,7 +119,7 @@ void DepthFilter::process(std::shared_ptr<Frame> &frame)
             ++clusterIdx;
         }
 
-    const int depthClusterAreaThreshold = int(depth.rows * depth.cols * 0.001);  // min 0.1% of the screen
+    const int depthClusterAreaThreshold = int(depth.rows * depth.cols * filterParams().minDepthClusterAreaCoeff);
     for (short i = 0; i < depth.rows; ++i)
         for (short j = 0; j < depth.cols; ++j)
         {
