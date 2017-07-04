@@ -20,6 +20,5 @@ target_link_libraries(animation_writer_app 4d tri ${OPENGL_LIBRARIES})
 add_app_default(triangulation_visualizer_app src/triangulation_visualizer_app.cpp)
 target_link_libraries(triangulation_visualizer_app tri)
 
-# TODO REMOVE
-add_app_default(_test_app src/_test_app.cpp)
-target_link_libraries(_test_app 4d ${OpenCV_LIBS})
+add_app_default(sandbox_app src/sandbox_app.cpp)
+target_link_libraries(sandbox_app 4d ${OpenCV_LIBS})
