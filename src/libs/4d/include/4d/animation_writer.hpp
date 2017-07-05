@@ -13,6 +13,9 @@ protected:
     void process(std::shared_ptr<MeshFrame> &item) override;
 
 private:
+    void processFrameBatch();
+
+private:
     bool finished = false;
 
     std::string outputPath;
@@ -27,4 +30,6 @@ private:
 
     float totalDelta = 0;
     int numFrames = 0;
+
+    std::vector<std::shared_ptr<MeshFrame>> batch;
 };

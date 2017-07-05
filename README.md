@@ -1,6 +1,12 @@
 # 4dvideo
+
 Capturing volumetric videos with Google Tango, RealSense R200 and fast Delaunay triangulation.
 
+To download 3rd party submodules:
+
+```
+git submodule update --init --recursive
+```
 
 CMake command line for Visual Studio 2015:
 

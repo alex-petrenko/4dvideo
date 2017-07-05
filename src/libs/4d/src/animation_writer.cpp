@@ -7,7 +7,21 @@
 #include <util/tiny_logger.hpp>
 #include <util/filesystem_utils.hpp>
 
+#include <4d/params.hpp>
 #include <4d/animation_writer.hpp>
+
+
+namespace
+{
+
+std::string frameFilename(int frameNumber, const std::string &ext)
+{
+    std::ostringstream filenamePrefix;
+    filenamePrefix << std::setw(4) << std::setfill('0') << frameNumber;
+    return filenamePrefix.str() + ext;
+}
+
+}
 
 
 AnimationWriter::AnimationWriter(const std::string &outputPath, MeshFrameQueue &q, CancellationToken &cancellationToken)
@@ -20,6 +34,8 @@ AnimationWriter::AnimationWriter(const std::string &outputPath, MeshFrameQueue &
 AnimationWriter::~AnimationWriter()
 {
     TLOG(INFO);
+
+    processFrameBatch();
 
     timeframe << totalDelta / numFrames << " " << lastMeshFilename << '\n';
     timeframe.close();
@@ -42,43 +58,75 @@ void AnimationWriter::process(std::shared_ptr<MeshFrame> &frame)
 
     TLOG(INFO) << "timeframe animation, frame #" << frame->frame2D->frameNumber;
 
-    std::ostringstream filenamePrefix;
-    filenamePrefix << std::setw(4) << std::setfill('0') << frame->frame2D->frameNumber;
-    const std::string meshFilename = filenamePrefix.str() + ".ply";
+    batch.emplace_back(frame);
+    if (batch.size() >= animationParams().batchSize)
+        processFrameBatch();
 
-    std::vector<cv::Point3f> points(frame->cloud);
-    for (size_t i = 0; i < points.size(); ++i)
+}
+
+void AnimationWriter::processFrameBatch()
+{
+    if (batch.empty())
+        return;
+
+    const auto &firstFrame = batch.front()->frame2D;
+    TLOG(INFO) << "Processing batch starting from frame #" << firstFrame->frameNumber;
+
+    const bool withColor = !firstFrame->color.empty();
+
+    const float textureScale = animationParams().textureScale;
+    const cv::Mat &firstColor = firstFrame->color;
+    const int texRows = int(firstColor.rows * textureScale), texCols = int(firstColor.cols * textureScale);
+    cv::Mat atlas = cv::Mat::zeros(int(texRows * batch.size()), texCols, firstColor.type());
+    const auto atlasName = frameFilename(firstFrame->frameNumber, ".jpg");
+
+    const float uvStep = 1.0f / batch.size();
+    for (size_t batchI = 0; batchI < batch.size(); ++batchI)
     {
-        points[i] -= modelCenter;
-        points[i].x *= -1, points[i].y *= -1;
+        auto &frame = batch[batchI];
+
+        const auto meshFilename = frameFilename(frame->frame2D->frameNumber, ".ply");
+
+        std::vector<cv::Point3f> points(frame->cloud);
+        for (size_t i = 0; i < points.size(); ++i)
+        {
+            points[i] -= modelCenter;
+            points[i].x *= -1, points[i].y *= -1;
+        }
+
+        if (withColor)
+        {
+            std::vector<cv::Point2f> uv(frame->uv.size());
+            for (size_t i = 0; i < uv.size(); ++i)
+            {
+                uv[i].x = frame->uv[i].x, uv[i].y = 1.0f - frame->uv[i].y;  // convert to .ply convention
+                uv[i].y = (batch.size() - batchI - 1) * uvStep + uv[i].y / batch.size();  // convert to atlas uv-coordinates
+            }
+            saveBinaryPly(pathJoin(outputPath, meshFilename), &points, &frame->triangles, &uv, &atlasName);
+
+            cv::Mat resizedTexture;
+            cv::resize(frame->frame2D->color, resizedTexture, cv::Size(), textureScale, textureScale, CV_INTER_CUBIC);
+            assert(resizedTexture.rows == texRows && resizedTexture.cols == texCols);
+            resizedTexture.copyTo(atlas.rowRange(int(batchI * texRows), int((batchI + 1) * texRows)));
+        }
+        else
+            saveBinaryPly(pathJoin(outputPath, meshFilename), &points, &frame->triangles);
+
+        if (lastWrittenFrame != -1)
+        {
+            const auto timeDeltaSeconds = float(frame->frame2D->dTimestamp - lastFrameTimestamp) / 1000000;
+            timeframe << std::setprecision(3) << timeDeltaSeconds << " " << lastMeshFilename << '\n';
+            totalDelta += timeDeltaSeconds;
+        }
+
+        lastFrameTimestamp = frame->frame2D->dTimestamp;
+        lastWrittenFrame = frame->frame2D->frameNumber;
+        lastMeshFilename = meshFilename;
+        ++numFrames;
     }
 
-    const bool withColor = !frame->frame2D->color.empty();
+    batch.clear();
+
     if (withColor)
-    {
-        const std::string textureFilename = filenamePrefix.str() + ".jpg";
-
-        std::vector<cv::Point2f> uv(frame->uv.size());
-        for (size_t i = 0; i < uv.size(); ++i)
-            uv[i].x = frame->uv[i].x, uv[i].y = 1.0f - frame->uv[i].y;
-        saveBinaryPly(pathJoin(outputPath, meshFilename), &points, &frame->triangles, &uv, &textureFilename);
-
-        cv::Mat finalTexture;
-        cv::resize(frame->frame2D->color, finalTexture, cv::Size(), 0.25, 0.25, CV_INTER_CUBIC);
-        cv::imwrite(pathJoin(outputPath, textureFilename), finalTexture);
-    }
-    else
-        saveBinaryPly(pathJoin(outputPath, meshFilename), &points, &frame->triangles);
-
-    if (lastWrittenFrame != -1)
-    {
-        const auto timeDeltaSeconds = float(frame->frame2D->dTimestamp - lastFrameTimestamp) / 1000000;
-        timeframe << std::setprecision(3) << timeDeltaSeconds << " " << lastMeshFilename << '\n';
-        totalDelta += timeDeltaSeconds;
-    }
-
-    lastFrameTimestamp = frame->frame2D->dTimestamp;
-    lastWrittenFrame = frame->frame2D->frameNumber;
-    lastMeshFilename = meshFilename;
-    ++numFrames;
+        cv::imwrite(pathJoin(outputPath, atlasName), atlas);
 }

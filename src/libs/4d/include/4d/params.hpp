@@ -37,11 +37,21 @@ public:
         float minDepthClusterAreaCoeff;
     };
 
+    struct AnimationParams
+    {
+        /// Downscale the textures if needed.
+        float textureScale;
+
+        /// Animation frames are written in batches, one texture atlas is created per frame batch.
+        int batchSize;
+    };
+
 public:
     static Params & instance();
 
     const MesherParams & getMesherParams() const { return mesherP; }
     const FilterParams & getFilterParams() const { return filterP; }
+    const AnimationParams & getAnimationParams() const { return animP; }
 
 private:
     Params();
@@ -51,8 +61,10 @@ private:
 private:
     MesherParams mesherP;
     FilterParams filterP;
+    AnimationParams animP;
 };
 
 inline const Params & algoParams() { return Params::instance(); }
 inline const Params::MesherParams & mesherParams() { return algoParams().getMesherParams(); }
 inline const Params::FilterParams & filterParams() { return algoParams().getFilterParams(); }
+inline const Params::AnimationParams & animationParams() { return algoParams().getAnimationParams(); }

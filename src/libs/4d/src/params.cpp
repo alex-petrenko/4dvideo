@@ -26,4 +26,11 @@ Params::Params()
         p.curvatureThresholdMm = 12;
         p.minDepthClusterAreaCoeff = 0.001f;  // min 0.1% of the depth image area
     }
+
+    // animation params
+    {
+        auto &p = animP;
+        p.textureScale = 0.5f;
+        p.batchSize = 8;
+    }
 }
