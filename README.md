@@ -3,6 +3,7 @@
 Capturing volumetric videos with Google Tango, RealSense R200 and fast Delaunay triangulation.
 
 Triangulation algorithm:
+
 ![Delaunay triangulation](https://github.com/alex-petrenko/4dvideo/blob/master/misc/triangulation.gif?raw=true)
 
 Example of 4D clip: https://skfb.ly/6snzt
