@@ -10,10 +10,10 @@ public:
     {
         /// Max length of the side of any triangle in pixels when projected onto depth camera plane.
         /// Helps to avoid thin triangles on the boundaries of objects.
-        float sideLengthThreshold2D;
+        float triSideLengthThreshold2D;
 
         /// Max length of the side of any 3D triangle in meters.
-        float sideLengthThreshold3D;
+        float triSideLengthThreshold3D;
 
         /// Max difference between minimum and maximum Z-coordinate of any 3D triangle. In meters.
         float zThreshold;
@@ -57,6 +57,8 @@ private:
     Params();
     Params(const Params &) = delete;
     void operator=(const Params &) = delete;
+
+    void SetCustomParams();
 
 private:
     MesherParams mesherP;

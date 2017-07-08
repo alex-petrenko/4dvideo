@@ -39,7 +39,10 @@ void DepthFilter::process(std::shared_ptr<Frame> &frame)
     tprof().startTimer("depth_filter");
 
     if (skipFiltering)
+    {
+        output.produce(frame);
         return;
+    }
 
     const uint16_t minDepth = filterParams().minDepthMm, maxDepth = filterParams().maxDepthMm, curvatureThreshold = filterParams().curvatureThresholdMm;
     const int purgeR = filterParams().purgeRadius;

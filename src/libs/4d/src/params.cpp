@@ -12,16 +12,16 @@ Params::Params()
     // mesher params
     {
         auto &p = mesherP;
-        p.sideLengthThreshold2D = 16;
-        p.sideLengthThreshold3D = 0.08f;
+        p.triSideLengthThreshold2D = 16;
+        p.triSideLengthThreshold3D = 0.08f;
         p.zThreshold = 0.05f;
     }
 
     // filter params
     {
         auto &p = filterP;
-        p.minDepthMm = 500;
-        p.maxDepthMm = 1100;
+        p.minDepthMm = 100;
+        p.maxDepthMm = 2600;
         p.purgeRadius = 3;
         p.curvatureThresholdMm = 12;
         p.minDepthClusterAreaCoeff = 0.001f;  // min 0.1% of the depth image area
@@ -33,4 +33,12 @@ Params::Params()
         p.textureScale = 0.5f;
         p.batchSize = 8;
     }
+
+    constexpr bool needCustomParams = false;
+    if (needCustomParams)
+        SetCustomParams();
+}
+
+void Params::SetCustomParams()
+{
 }

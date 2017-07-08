@@ -19,7 +19,7 @@ namespace
 bool filterTriangle2D(const PointIJ &a, const PointIJ &b, const PointIJ &c)
 {
     const cv::Point2f p1(a.j, a.i), p2(b.j, b.i), p3(c.j, c.i);
-    const double threshold = mesherParams().sideLengthThreshold2D;
+    const double threshold = mesherParams().triSideLengthThreshold2D;
     if (cv::norm(p2 - p1) > threshold) return true;
     if (cv::norm(p3 - p2) > threshold) return true;
     if (cv::norm(p1 - p3) > threshold) return true;
@@ -38,7 +38,7 @@ bool filterTriangle3D(const cv::Point3f &p1, const cv::Point3f &p2, const cv::Po
     if (maxZ - minZ > zThreshold)
         return true;
 
-    const double sideLengthThreshold3D = mesherParams().sideLengthThreshold3D;
+    const double sideLengthThreshold3D = mesherParams().triSideLengthThreshold3D;
     if (cv::norm(p2 - p1) > sideLengthThreshold3D) return true;
     if (cv::norm(p3 - p2) > sideLengthThreshold3D) return true;
     if (cv::norm(p1 - p3) > sideLengthThreshold3D) return true;
