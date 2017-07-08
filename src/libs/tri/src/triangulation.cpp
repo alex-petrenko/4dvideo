@@ -258,7 +258,7 @@ private:
     float visScaleI = 1, visScaleJ = 1;
     int visOfsI = 0, visOfsJ = 0;
     static constexpr int visW = 1920, visH = 1080;
-    static constexpr bool visFixedResolution = true, visPreserveAspect = true;
+    static constexpr bool visFixedResolution = false, visPreserveAspect = true;
 };
 
 
@@ -787,7 +787,7 @@ void Delaunay::DelaunayImpl::plotTriangulation(cv::Mat &img, EdgeIdx start, Edge
     {
         const PointIJ &p = P[i];
         const cv::Point2i center{ int(p.j * visScaleJ + visOfsJ), int(p.i * visScaleI + visOfsI) };
-        constexpr bool drawCircle = false;
+        constexpr bool drawCircle = true;
         if (drawCircle)
             cv::circle(img, center, 1, pclr, 2);
         else

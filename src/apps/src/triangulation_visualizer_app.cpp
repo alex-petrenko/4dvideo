@@ -86,15 +86,13 @@ std::vector<PointIJ> getPointsCircleCenter(int n = 60, int r = 160, int cx = 160
 
 std::vector<PointIJ> getPointsCirclesGrid(bool withCenters = false)
 {
-    const auto grid = getPointsGrid(6, 150);
+    const auto grid = getPointsGrid(3, 150);
     std::vector<PointIJ> points, circle;
 
-    int nMin = 3, nMax = 20, rMax = 65;
+    int nMin = 16, rMax = 65;
     for (const auto &p : grid)
     {
-        const int n = randRange(nMin, nMax);
-        const int rMin = int(35.0f * (float(n) / nMax));
-        const int r = randRange(rMin, rMax);
+        const int n = nMin, r = rMax;
 
         if (withCenters)
             circle = getPointsCircleCenter(n, r, p.j, p.i);
@@ -162,7 +160,7 @@ void saveToDisk(const cv::Mat &img)
 {
     static int numFrames = 0;
     std::stringstream s;
-    s << R"(C:\all\projects\personal\4dvideo_data\article\animations\14_dataset\)";
+    s << R"(C:\all\projects\personal\4dvideo_data\article\animations\15_github\)";
     s << "frame_" << std::setw(8) << std::setfill('0') << numFrames << ".png";
     ++numFrames;
     const auto path = s.str();
@@ -207,7 +205,7 @@ int main()
 {
     using namespace std::placeholders;
 
-    auto points = getPointsDataset();
+    auto points = getPointsCirclesGrid(true);
     alignPoints(points);
     std::vector<short> indexMap(points.size());
 
