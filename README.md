@@ -8,7 +8,7 @@ O(nlogn) triangulation algorithm:
 
 4D clip rendered by OpenGL viewer (clickable):
 
-[![4D clip rendered by OpenGL viewer](https://img.youtube.com/vi/7gJUIYt-Lew/0.jpg)](http://www.youtube.com/watch?v=T-D1KVIuvjA)
+[![4D clip rendered by OpenGL viewer](https://img.youtube.com/vi/7gJUIYt-Lew/0.jpg)](https://www.youtube.com/watch?v=7gJUIYt-Lew)
 
 4D clip in WebGL: **https://skfb.ly/6snzt**
 
