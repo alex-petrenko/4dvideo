@@ -2,7 +2,7 @@
 
 Capturing volumetric videos with Google Tango, RealSense R200 and fast Delaunay triangulation.
 
-O(nlogn) triangulation algorithm:
+O(nlogn) triangulation algorithm based on Guibas-Stolfi paper:
 
 ![Delaunay triangulation](https://github.com/alex-petrenko/4dvideo/blob/master/misc/triangulation.gif?raw=true)
 
